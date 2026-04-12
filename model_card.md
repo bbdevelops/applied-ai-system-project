@@ -59,31 +59,55 @@ Prompts:
 
 ---
 
-## 6. Limitations and Bias 
+## 6. Limitations and Bias
 
-Where the system struggles or behaves unfairly. 
+**The genre label acts like a VIP pass — and that's a problem.**
 
-Prompts:  
+The biggest weakness is how much weight the system gives to matching the genre label. A genre match awards 2.5 points upfront, which is more than the maximum energy score a song can earn. This means a song can show up in your top results simply because it shares a label with your preferred genre, even if everything else about it feels wrong. A real example from testing: "Gym Hero" by Max Pulse kept appearing in the top results for a user who wanted happy, upbeat pop music. The reason? Gym Hero is tagged as pop — so it got 2.5 free points before anything else was measured. But Gym Hero's mood is "intense," not "happy." If you just wanted something fun and cheerful, Gym Hero would feel out of place. The system doesn't know the difference; it just sees the matching genre tag and rewards it.
 
-- Features it does not consider  
-- Genres or moods that are underrepresented  
-- Cases where the system overfits to one preference  
-- Ways the scoring might unintentionally favor some users  
+**Small catalog, big blind spots.**
+
+With only 20 songs, some genres appear just once or twice. If you prefer jazz, there is literally one jazz song in the entire catalog — Coffee Shop Stories. After that, the system has no choice but to recommend lofi and ambient tracks that happen to have similar energy levels. That is not jazz; it just happens to feel calm. In a real platform with millions of songs, this dilutes naturally. Here it creates a filter bubble for anyone who falls outside the three or four most represented genres.
+
+**The system cannot learn or adapt.**
+
+Every recommendation is made from a frozen snapshot of your preferences. There is no way to say "I liked that one" or "skip this artist." In Spotify or TikTok, every play, skip, and replay updates the model. Here, the profile stays static — so if your taste shifts or the first set of results misses the mark, the system has no way to correct itself.
+
+**The system assumes you know yourself in numbers.**
+
+To get accurate results, you need to supply a precise energy value like 0.80 or a tempo target of 120 BPM. Real listeners do not think that way. Most people describe their taste in words — "something to work out to" or "background music for studying" — not fractions. This means the profile setup itself introduces error before any recommendation is made.
 
 ---
 
-## 7. Evaluation  
+## 7. Evaluation
 
-How you checked whether the recommender behaved as expected. 
+**Profiles tested.**
 
-Prompts:  
+Five user profiles were run against all 20 songs to observe how the scoring logic handled different types of listeners:
 
-- Which user profiles you tested  
-- What you looked for in the recommendations  
-- What surprised you  
-- Any simple tests or comparisons you ran  
+- **High-Energy Pop** — someone who wants upbeat, danceable pop music (the original default profile)
+- **Chill Lofi** — someone who wants quiet, acoustic background music for studying or relaxing
+- **Deep Intense Rock** — someone who wants loud, fast, aggressive music
+- **Focused Jazz** — someone who wants calm, mid-energy jazz for concentration
+- **Conflicting Moods (edge case)** — an adversarial profile designed to confuse the system: high energy (0.90) paired with a sad mood and an ambient genre preference — things that do not naturally go together
 
-No need for numeric metrics unless you created some.
+**What the results revealed.**
+
+The Chill Lofi and Deep Intense Rock profiles worked best. Both had enough matching songs in the catalog that the top results felt genuinely appropriate — Library Rain and Midnight Coding for the lofi listener, Storm Runner for the rock listener. These profiles benefited from a good genre-energy alignment in the dataset.
+
+The High-Energy Pop results were mostly reasonable, but Gym Hero kept appearing at rank 2 despite being tagged as "intense" rather than "happy." For someone who genuinely just wants cheerful, upbeat music, Gym Hero would feel like a mismatch. The genre label was doing all the heavy lifting.
+
+The Focused Jazz profile exposed the small-catalog problem directly. There is only one jazz song, so after that, the system defaulted to lofi songs with similar energy and acousticness levels. The recommendations were not wrong exactly, but they were not jazz.
+
+The Conflicting Moods profile was the most revealing. The ambient genre tag earned Spacewalk Thoughts — a very low-energy ambient track — the top spot, even though the user profile was asking for high energy (0.90). The genre match alone was enough to override the massive energy mismatch. This is a clear case where the system's bias becomes a real problem.
+
+**The weight shift experiment.**
+
+One experiment was run: the energy weight was doubled (from 2.0 to 4.0) and the genre weight was halved (from 2.5 to 1.25). The goal was to see if making the system more sensitive to how a song "feels" rather than what label it carries would produce better results.
+
+For the Conflicting Moods profile, the change was clearly an improvement — Spacewalk Thoughts fell out of the top 5 and high-energy songs correctly took its place. For the Focused Jazz profile, the change backfired: the one actual jazz song dropped to rank 2, replaced by a lofi track that just happened to have a closer energy score. For all other profiles, rankings shifted by one position at most and both versions felt equally reasonable.
+
+The experiment confirmed that the best weight balance depends on the use case. Genre labels matter more when users strongly identify with a genre. Energy matters more when users care about vibe over category.
 
 ---
 
