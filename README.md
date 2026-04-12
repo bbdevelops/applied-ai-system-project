@@ -168,8 +168,10 @@ python -m src.main
 ```
 
 ## Expected Output
-High-Energy Pop
-![Terminal Output Results High-Energy Pop Balanced](img\terminal_output_results_rich_high-energy_pop_balanced.png)
+
+Terminal Output Results High-Energy Pop Balanced
+
+![Terminal Output Results High-Energy Pop Balanced](img/terminal_output_results_rich_high-energy_pop_balanced.png)
 
 ### CLI Flags
 
