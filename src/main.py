@@ -2,13 +2,15 @@
 Command line runner for the Music Recommender Simulation.
 
 Run from the project root with:
-    python -m src.main                                         # default: High-Energy Pop, balanced
-    python -m src.main --profile chill_lofi                   # specific profile
-    python -m src.main --all                                   # all profiles in sequence
-    python -m src.main --mode genre-first                      # genre-first scoring mode
-    python -m src.main --profile chill_lofi --mode mood-first  # profile + mode combined
-    python -m src.main --all --mode energy-focused             # all profiles, energy-focused mode
-    python -m src.main --help                                  # list available profiles and modes
+    python -m src.main                                                  # default: High-Energy Pop, balanced
+    python -m src.main --profile chill_lofi                            # specific profile
+    python -m src.main --all                                            # all profiles in sequence
+    python -m src.main --mode genre-first                               # genre-first scoring mode
+    python -m src.main --profile chill_lofi --mode mood-first          # profile + mode combined
+    python -m src.main --all --mode energy-focused                      # all profiles, energy-focused mode
+    python -m src.main --diversity                                      # enable diversity penalty
+    python -m src.main --all --diversity --mode genre-first             # all profiles with diversity
+    python -m src.main --help                                           # list available profiles and modes
 """
 
 import argparse
@@ -95,14 +97,15 @@ PROFILES = {
 }
 
 
-def run_profile(user_prefs: dict, songs: list, mode: str = "balanced") -> None:
+def run_profile(user_prefs: dict, songs: list, mode: str = "balanced", diversity: bool = False) -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
+    diversity_label = "  [diversity ON]" if diversity else ""
     print(f"\n{'=' * 50}")
-    print(f"  Profile: {label}  |  Mode: {mode}")
+    print(f"  Profile: {label}  |  Mode: {mode}{diversity_label}")
     print(f"{'=' * 50}")
 
-    recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode)
+    recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode, diversity=diversity)
 
     print("\nTop recommendations:\n")
     for rank, (song, score, explanation) in enumerate(recommendations, start=1):
@@ -139,6 +142,11 @@ def main() -> None:
         metavar="MODE",
         help=f"Scoring mode. Choices: {', '.join(SCORING_MODES.keys())} (default: balanced)",
     )
+    parser.add_argument(
+        "--diversity",
+        action="store_true",
+        help="Apply diversity penalty: reduce scores for songs whose artist or genre is already in the top results.",
+    )
     args = parser.parse_args()
 
     songs = load_songs("data/songs.csv")
@@ -152,7 +160,7 @@ def main() -> None:
         profiles_to_run = [PROFILES["high_energy_pop"]]
 
     for user_prefs in profiles_to_run:
-        run_profile(user_prefs, songs, mode=args.mode)
+        run_profile(user_prefs, songs, mode=args.mode, diversity=args.diversity)
 
 
 if __name__ == "__main__":

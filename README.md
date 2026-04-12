@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-This simulation implements a **content-based music recommender** called Resonance Selector 1.0. You give it a taste profile — a preferred genre, mood, energy level, and a handful of other preferences — and it scores every song in the catalog using a weighted closeness model, then returns the top five matches with a plain-language explanation of why each track was chosen. The system now supports 15 song attributes including advanced features like popularity, release decade, detailed mood tags, instrumentalness, and language style.
+This simulation implements a **content-based music recommender** called Resonance Selector 1.0. You give it a taste profile — a preferred genre, mood, energy level, and a handful of other preferences — and it scores every song in the catalog using a weighted closeness model, then returns the top five matches with a plain-language explanation of why each track was chosen. The system supports 15 song attributes including advanced features like popularity, release decade, detailed mood tags, instrumentalness, and language style. An optional **diversity penalty** (`--diversity`) prevents the same artist or genre from monopolising the top results.
 
 ---
 
@@ -68,6 +68,21 @@ The weights below are the **`balanced` defaults**. The `--mode` flag (see CLI Fl
 
 **Maximum possible score: ~14.0 pts** (balanced mode)
 
+### Diversity Penalty (optional)
+
+By default the system picks the top-K songs by raw score, which can produce a list dominated by one genre or one artist. Passing `--diversity` activates a **greedy selection loop** that adjusts for this:
+
+1. Score every song as normal and sort descending.
+2. Build the top-5 list one slot at a time. After each pick, track which artists and genres have already been selected.
+3. For every remaining candidate, subtract a penalty if its artist or genre is already represented:
+   - **−2.0 pts** for a duplicate artist
+   - **−1.5 pts** for a duplicate genre
+4. Pick the candidate with the best adjusted score, add it to the list, update the seen sets, repeat.
+
+The penalty is **soft** — a strong song from a repeated genre can still appear if it outscores its rivals even after the deduction. The penalty amount and the reason it fired (`diversity penalty: duplicate genre (pop) -1.5`) are always shown in the "Because:" line so the trade-off is visible.
+
+Penalty values were chosen to mirror the corresponding match bonuses in balanced mode (genre match = +2.5, mood match = +1.5), so a duplicate costs roughly as much as one matching label is worth.
+
 **Why this outperforms a flat recipe:** A flat +2.0 genre / +1.0 mood system treats all songs in the same genre as equally good. The closeness model penalizes songs that drift far on energy or valence even within the same genre — so an intense lofi track won't score the same as a calm focused lofi track when the user wants something quiet.
 
 ### Data Flow
@@ -110,6 +125,7 @@ Represents a user who prefers calm, acoustic-leaning background music for focuse
 ### Potential Biases
 
 - **Genre dominance:** The +2.5 genre bonus means even a mediocre genre match will often beat an excellent cross-genre fit. A perfect energy/valence/mood alignment in the wrong genre will almost always lose. Use `--mode energy-focused` or `--mode mood-first` to reduce genre's influence.
+- **Artist/genre repetition:** Without `--diversity`, the same artist or genre can fill most of the top-5 slots. `--diversity` applies a soft penalty (−2.0 for a duplicate artist, −1.5 for a duplicate genre) to push variety into the results. The penalty is shown in the "Because:" line so you can see when it fires.
 - **Small catalog effect:** With 20 songs, rare moods like `euphoric` or `aggressive` have only one representative track each. A mood match there wins by default rather than by merit.
 - **Acoustic binary:** `likes_acoustic` is a single boolean — it can't capture context-specific preferences (e.g., "acoustic folk yes, acoustic slow ballads no"), which may over- or under-penalize songs depending on the profile.
 
@@ -148,7 +164,10 @@ The recommender is controlled entirely from the command line. All commands are r
 | `python -m src.main --profile <name>` | Runs a single named profile |
 | `python -m src.main --all` | Runs all five profiles in sequence |
 | `python -m src.main --mode <mode>` | Applies a scoring mode (see below); combines with `--profile` or `--all` |
+| `python -m src.main --diversity` | Enables the diversity penalty to reduce artist/genre repetition in top results |
 | `python -m src.main --help` | Prints usage info and lists available profile and mode names |
+
+`--diversity` is independent of `--profile`, `--all`, and `--mode` — any combination works.
 
 **Available profiles:**
 
@@ -188,6 +207,16 @@ python -m src.main --profile focused_jazz --mode mood-first
 
 # Run all profiles with energy-focused weights to compare
 python -m src.main --all --mode energy-focused
+
+# Enable diversity penalty for the default profile
+python -m src.main --diversity
+
+# Compare results with and without the diversity penalty
+python -m src.main --profile high_energy_pop
+python -m src.main --profile high_energy_pop --diversity
+
+# Diversity + a scoring mode across all profiles
+python -m src.main --all --diversity --mode genre-first
 
 # See all available options
 python -m src.main --help

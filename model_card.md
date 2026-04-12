@@ -36,6 +36,10 @@ The system also supports three alternative **scoring modes** selectable via a `-
 
 Once every song has a total score, the list is sorted from highest to lowest. The top results are the recommendation.
 
+**Optional: Diversity Penalty (`--diversity`)**
+
+By default the sorted list is sliced directly, which can produce results dominated by one artist or genre. Enabling `--diversity` replaces the slice with a greedy selection loop: the system builds the top-5 list one pick at a time, applying a soft penalty to any candidate whose artist or genre is already in the selected set (−2.0 pts for a duplicate artist, −1.5 pts for a duplicate genre). The penalty is shown in each song's explanation so the trade-off is transparent. Songs are discouraged from repeating but never outright blocked — a strong enough song from a repeated genre can still appear.
+
 ---
 
 ## 4. Data  
@@ -66,9 +70,13 @@ The scoring logic also captures mood-energy coherence well when the genre label 
 
 The biggest weakness is how much weight the system gives to matching the genre label. A genre match awards 2.5 points upfront, which is more than the maximum energy score a song can earn. This means a song can show up in your top results simply because it shares a label with your preferred genre, even if everything else about it feels wrong. A real example from testing: "Gym Hero" by Max Pulse kept appearing in the top results for a user who wanted happy, upbeat pop music. The reason? Gym Hero is tagged as pop — so it got 2.5 free points before anything else was measured. But Gym Hero's mood is "intense," not "happy." If you just wanted something fun and cheerful, Gym Hero would feel out of place. The system doesn't know the difference; it just sees the matching genre tag and rewards it.
 
+**Artist and genre repetition creates filter bubbles — partially mitigated by `--diversity`.**
+
+Without any diversity logic, the top-5 list often contains two or three songs from the same genre (or the same artist in a genre-heavy dataset). For the High-Energy Pop profile, both of the catalog's pop songs appear in the top two slots because the genre bonus dominates everything else. The `--diversity` flag applies a greedy penalty to address this: after each pick, the next candidate from the same artist pays −2.0 pts and the next candidate from the same genre pays −1.5 pts. This is a soft nudge, not a hard cap — a strong enough duplicate can still appear. The penalty amounts were set to match the corresponding match bonuses in balanced mode (genre match = +2.5, mood match = +1.5), so a repeat costs roughly as much as one matching label is worth.
+
 **Small catalog, big blind spots.**
 
-With only 20 songs, some genres appear just once or twice. If you prefer jazz, there is literally one jazz song in the entire catalog — Coffee Shop Stories. After that, the system has no choice but to recommend lofi and ambient tracks that happen to have similar energy levels. That is not jazz; it just happens to feel calm. In a real platform with millions of songs, this dilutes naturally. Here it creates a filter bubble for anyone who falls outside the three or four most represented genres.
+With only 20 songs, some genres appear just once or twice. If you prefer jazz, there is literally one jazz song in the entire catalog — Coffee Shop Stories. After that, the system has no choice but to recommend lofi and ambient tracks that happen to have similar energy levels. That is not jazz; it just happens to feel calm. In a real platform with millions of songs, this dilutes naturally. Here it creates a filter bubble for anyone who falls outside the three or four most represented genres. The diversity penalty reduces within-genre repetition but cannot fix a genre that only has one song.
 
 **The system cannot learn or adapt.**
 
@@ -119,6 +127,8 @@ This insight directly motivated the scoring modes feature. The experimental weig
 **Larger and more diverse dataset.** The most immediate limitation is the 20-song catalog. Expanding to hundreds of songs — with meaningful representation for jazz, blues, classical, folk, and non-Western styles — would make the system useful for a much wider range of listeners. Right now the system cannot tell the difference between "no songs match your taste" and "your genre just isn't in the catalog."
 
 **User-configurable weights** *(implemented).* The weight-shift experiment showed that the best balance depends on the listener. The system now supports four scoring modes — `balanced`, `genre-first`, `mood-first`, and `energy-focused` — selectable via the `--mode` CLI flag. A natural next step would be fully custom weight values (e.g., `--weight-genre 3.5`) rather than only named presets, giving users fine-grained control without requiring code changes.
+
+**Diversity penalty** *(implemented).* The `--diversity` flag applies a greedy soft penalty (−2.0 for a duplicate artist, −1.5 for a duplicate genre) to prevent the top-5 from being dominated by one artist or genre. A tunable penalty strength (e.g., `--diversity-strength 3.0`) and a configurable per-artist/per-genre cap (e.g., "allow at most 2 songs per genre before penalising") would give more precise control over the variety-vs-relevance trade-off.
 
 ---
 

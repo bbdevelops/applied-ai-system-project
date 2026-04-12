@@ -48,7 +48,7 @@ class Recommender:
     def __init__(self, songs: List[Song]):
         self.songs = songs
 
-    def recommend(self, user: UserProfile, k: int = 5, mode: str = "balanced") -> List[Song]:
+    def recommend(self, user: UserProfile, k: int = 5, mode: str = "balanced", diversity: bool = False) -> List[Song]:
         """Returns the top k songs ranked by score for the given user profile."""
         user_prefs = {
             'genre': user.favorite_genre,
@@ -62,7 +62,7 @@ class Recommender:
             'preferred_language': user.preferred_language,
         }
         song_dicts = [vars(s) for s in self.songs]
-        results = recommend_songs(user_prefs, song_dicts, k, mode=mode)
+        results = recommend_songs(user_prefs, song_dicts, k, mode=mode, diversity=diversity)
         song_map = {s.id: s for s in self.songs}
         return [song_map[r[0]['id']] for r in results]
 
@@ -244,20 +244,65 @@ def score_song(user_prefs: Dict, song: Dict, weights: Dict = None) -> Tuple[floa
 
     return score, reasons
 
-def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5, mode: str = "balanced") -> List[Tuple[Dict, float, str]]:
+def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5, mode: str = "balanced", diversity: bool = False) -> List[Tuple[Dict, float, str]]:
     """
     Scores every song and returns the top k sorted by score descending.
 
     Uses sorted() rather than .sort() to avoid mutating the input list.
     Pass a mode name from SCORING_MODES to shift weight priorities.
     Each result is a (song_dict, score, explanation) tuple.
+
+    When diversity=True, a greedy selection loop applies a soft penalty to any
+    candidate whose artist or genre is already represented in the results built
+    so far.  This prevents the same artist or genre from dominating the top-K.
+    Penalty constants mirror the corresponding match bonuses in balanced mode:
+        ARTIST_PENALTY = 2.0   (same as genre match weight)
+        GENRE_PENALTY  = 1.5   (same as mood match weight)
     """
     weights = SCORING_MODES.get(mode, SCORING_MODES["balanced"])
     scored = []
     for song in songs:
         song_score, reasons = score_song(user_prefs, song, weights)
-        explanation = " | ".join(reasons)
-        scored.append((song, song_score, explanation))
+        scored.append((song, song_score, list(reasons)))
 
     ranked = sorted(scored, key=lambda x: x[1], reverse=True)
-    return ranked[:k]
+
+    if not diversity:
+        return [(song, score, " | ".join(reasons)) for song, score, reasons in ranked[:k]]
+
+    # --- Diversity penalty: greedy selection ---
+    ARTIST_PENALTY = 2.0
+    GENRE_PENALTY = 1.5
+
+    seen_artists: set = set()
+    seen_genres: set = set()
+    results = []
+    remaining = list(ranked)  # already sorted by base score
+
+    while len(results) < k and remaining:
+        # Find the candidate with the best adjusted score given what's already selected
+        best_adj_score = -float("inf")
+        best_idx = 0
+        for i, (song, base_score, _) in enumerate(remaining):
+            adj = base_score
+            if song["artist"] in seen_artists:
+                adj -= ARTIST_PENALTY
+            if song["genre"] in seen_genres:
+                adj -= GENRE_PENALTY
+            if adj > best_adj_score:
+                best_adj_score = adj
+                best_idx = i
+
+        song, base_score, reasons = remaining.pop(best_idx)
+
+        # Append penalty notes to the explanation for transparency
+        if song["artist"] in seen_artists:
+            reasons.append(f"diversity penalty: duplicate artist ({song['artist']}) (-{ARTIST_PENALTY:.1f})")
+        if song["genre"] in seen_genres:
+            reasons.append(f"diversity penalty: duplicate genre ({song['genre']}) (-{GENRE_PENALTY:.1f})")
+
+        seen_artists.add(song["artist"])
+        seen_genres.add(song["genre"])
+        results.append((song, best_adj_score, " | ".join(reasons)))
+
+    return results
