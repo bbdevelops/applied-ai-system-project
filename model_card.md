@@ -26,7 +26,13 @@ The system then goes through every song in the catalog and asks two questions fo
 
 If the song's genre matches your preference, it gets a fixed bonus of 2.5 points. A mood match adds another 1.5 points. These are the biggest single rewards in the whole system.
 
-For the numerical features, the system measures the gap between the song's value and your target. A song with an energy of 0.80 scores higher for a user who wants 0.85 energy than for one who wants 0.20. Each numerical feature has its own multiplier: energy matters the most (×2.0), followed by emotional positivity or valence (×1.5), acousticness (×1.0), tempo (×0.75), and danceability (×0.5).
+For the numerical features, the system measures the gap between the song's value and your target. A song with an energy of 0.80 scores higher for a user who wants 0.85 energy than for one who wants 0.20. Each numerical feature has its own multiplier. In the default **balanced** mode: energy matters the most (×2.0), followed by emotional positivity or valence (×1.5), acousticness (×1.0), tempo (×0.75), and danceability (×0.5).
+
+The system also supports three alternative **scoring modes** selectable via a `--mode` CLI flag. Each mode boosts one dimension's weights while suppressing the others, creating real trade-offs rather than just adding points on top:
+
+- **genre-first** — doubles the genre bonus to 5.0 pts, halves energy and mood weights. Use when genre identity is the primary driver.
+- **mood-first** — doubles mood and detailed mood tag weights, suppresses genre. Use when emotional feel matters more than category.
+- **energy-focused** — doubles the energy multiplier and also boosts tempo and danceability, suppresses genre and mood. Use when intensity and vibe override everything else.
 
 Once every song has a total score, the list is sorted from highest to lowest. The top results are the recommendation.
 
@@ -96,7 +102,7 @@ The Focused Jazz profile exposed the small-catalog problem directly. There is on
 
 The Conflicting Moods profile was the most revealing. The ambient genre tag earned Spacewalk Thoughts — a very low-energy ambient track — the top spot, even though the user profile was asking for high energy (0.90). The genre match alone was enough to override the massive energy mismatch. This is a clear case where the system's bias becomes a real problem.
 
-**The weight shift experiment.**
+**The weight shift experiment — now a built-in mode.**
 
 One experiment was run: the energy weight was doubled (from 2.0 to 4.0) and the genre weight was halved (from 2.5 to 1.25). The goal was to see if making the system more sensitive to how a song "feels" rather than what label it carries would produce better results.
 
@@ -104,13 +110,15 @@ For the Conflicting Moods profile, the change was clearly an improvement — Spa
 
 The experiment confirmed that the best weight balance depends on the use case. Genre labels matter more when users strongly identify with a genre. Energy matters more when users care about vibe over category.
 
+This insight directly motivated the scoring modes feature. The experimental weight configuration is now available as `--mode energy-focused`, and two additional presets (`genre-first` and `mood-first`) cover the opposite ends of the spectrum. Users can now reproduce the experiment — or any variation of it — at runtime without touching the code.
+
 ---
 
 ## 8. Future Work  
 
 **Larger and more diverse dataset.** The most immediate limitation is the 20-song catalog. Expanding to hundreds of songs — with meaningful representation for jazz, blues, classical, folk, and non-Western styles — would make the system useful for a much wider range of listeners. Right now the system cannot tell the difference between "no songs match your taste" and "your genre just isn't in the catalog."
 
-**User-configurable weights.** The current scoring weights are fixed: genre always matters 2.5 points, energy always uses a ×2.0 multiplier. But the weight-shift experiment showed that the best balance depends on the listener. A future version could let users specify at runtime how much each feature matters to them — for example, "I care more about energy than genre today." This would turn a one-size-fits-all algorithm into a genuinely flexible tool.  
+**User-configurable weights** *(implemented).* The weight-shift experiment showed that the best balance depends on the listener. The system now supports four scoring modes — `balanced`, `genre-first`, `mood-first`, and `energy-focused` — selectable via the `--mode` CLI flag. A natural next step would be fully custom weight values (e.g., `--weight-genre 3.5`) rather than only named presets, giving users fine-grained control without requiring code changes.
 
 ---
 
@@ -122,4 +130,4 @@ AI tools were genuinely useful during the build, but in a specific way: they han
 
 What surprised me most was how much a few simple weighted comparisons can feel like a real recommendation. When the system returned "Library Rain" and "Midnight Coding" for the Chill Lofi profile, it felt right — not because there was anything intelligent happening, but because the math happened to capture the same intuition a person would use. There is no machine learning here, no training data, no neural network. Just subtraction and multiplication. And yet the output feels personal.
 
-If I extended this project, the first thing I would add is user-adjustable weights at runtime. The weight-shift experiment made it clear that there is no single best balance between genre and energy — it depends on what the listener cares about in that moment. Letting users tune that directly would make the system much more honest about what it is actually measuring.  
+The weight-shift experiment made it clear that there is no single best balance between genre and energy — it depends on what the listener cares about in that moment. That finding led directly to the scoring modes feature: `--mode genre-first`, `--mode mood-first`, and `--mode energy-focused` are now selectable at runtime without touching the code. Testing those modes side by side — especially running `--all --mode energy-focused` versus `--all --mode genre-first` — makes the system's trade-offs visible in a way that a single fixed weight set never could.

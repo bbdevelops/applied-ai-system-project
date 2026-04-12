@@ -45,6 +45,8 @@ Real-world music recommenders like Spotify and TikTok build a mathematical finge
 
 Rather than a flat points-for-category-match system, this simulation uses a **weighted closeness model**. Every feature contributes a score proportional to how similar the song is to the user's preferences, so distance matters — not just match/no-match.
 
+The weights below are the **`balanced` defaults**. The `--mode` flag (see CLI Flags) lets you shift priorities at runtime — boosting one dimension while suppressing the others.
+
 **Categorical (binary):**
 - Genre match: **+2.5 pts**
 - Mood match: **+1.5 pts**
@@ -57,14 +59,14 @@ Rather than a flat points-for-category-match system, this simulation uses a **we
 |---|---|---|
 | `energy` | ×2.0 | Strongest predictor of perceived vibe |
 | `valence` | ×1.5 | Emotional positivity — the core "feel" of a song |
-| `acousticness` | ×1.0 / ×0.75 | Full weight if `likes_acoustic=True`, reduced otherwise |
+| `acousticness` | ×1.0 | Acoustic vs. electronic texture preference |
 | `tempo_bpm` | ×0.75 | BPM normalized to 0–1 scale (60–200 BPM range) before scoring |
 | `danceability` | ×0.5 | Secondary preference signal |
 | `popularity` | ×0.75 | Proximity to desired fame level; gap normalized over 0–100 |
 | `release_decade` | ×0.75 | Era alignment; decade gap normalized over 40-year span |
 | `instrumentalness` | ×1.0 | Vocal-to-instrumental ratio proximity |
 
-**Maximum possible score: ~14.0 pts**
+**Maximum possible score: ~14.0 pts** (balanced mode)
 
 **Why this outperforms a flat recipe:** A flat +2.0 genre / +1.0 mood system treats all songs in the same genre as equally good. The closeness model penalizes songs that drift far on energy or valence even within the same genre — so an intense lofi track won't score the same as a calm focused lofi track when the user wants something quiet.
 
@@ -107,7 +109,7 @@ Represents a user who prefers calm, acoustic-leaning background music for focuse
 
 ### Potential Biases
 
-- **Genre dominance:** The +2.5 genre bonus means even a mediocre genre match will often beat an excellent cross-genre fit. A perfect energy/valence/mood alignment in the wrong genre will almost always lose.
+- **Genre dominance:** The +2.5 genre bonus means even a mediocre genre match will often beat an excellent cross-genre fit. A perfect energy/valence/mood alignment in the wrong genre will almost always lose. Use `--mode energy-focused` or `--mode mood-first` to reduce genre's influence.
 - **Small catalog effect:** With 20 songs, rare moods like `euphoric` or `aggressive` have only one representative track each. A mood match there wins by default rather than by merit.
 - **Acoustic binary:** `likes_acoustic` is a single boolean — it can't capture context-specific preferences (e.g., "acoustic folk yes, acoustic slow ballads no"), which may over- or under-penalize songs depending on the profile.
 
@@ -142,10 +144,11 @@ The recommender is controlled entirely from the command line. All commands are r
 
 | Command | What it does |
 |---|---|
-| `python -m src.main` | Runs the default **High-Energy Pop** profile |
+| `python -m src.main` | Runs the default **High-Energy Pop** profile in balanced mode |
 | `python -m src.main --profile <name>` | Runs a single named profile |
 | `python -m src.main --all` | Runs all five profiles in sequence |
-| `python -m src.main --help` | Prints usage info and lists available profile names |
+| `python -m src.main --mode <mode>` | Applies a scoring mode (see below); combines with `--profile` or `--all` |
+| `python -m src.main --help` | Prints usage info and lists available profile and mode names |
 
 **Available profiles:**
 
@@ -157,6 +160,17 @@ The recommender is controlled entirely from the command line. All commands are r
 | `conflicting_moods` | Adversarial edge case: high energy + sad mood + ambient genre |
 | `focused_jazz` | Calm, mid-energy jazz for concentration |
 
+**Available scoring modes:**
+
+| Mode | What it prioritizes | When to use it |
+|---|---|---|
+| `balanced` | All features at default weights — genre leads | Default; good general-purpose starting point |
+| `genre-first` | Genre bonus ×2 (5.0 pts), other features suppressed | When genre label is the user's primary identity |
+| `mood-first` | Mood and detailed mood tag ×2, genre suppressed | When emotional feel matters more than genre category |
+| `energy-focused` | Energy ×2, tempo and danceability also boosted | When vibe and intensity matter most regardless of label |
+
+`--mode` is independent of `--profile` and `--all` — any combination works.
+
 **Examples:**
 
 ```bash
@@ -165,6 +179,15 @@ python -m src.main --profile chill_lofi
 
 # Run every profile and compare results
 python -m src.main --all
+
+# Apply genre-first mode to the default profile
+python -m src.main --mode genre-first
+
+# Combine a specific profile with a scoring mode
+python -m src.main --profile focused_jazz --mode mood-first
+
+# Run all profiles with energy-focused weights to compare
+python -m src.main --all --mode energy-focused
 
 # See all available options
 python -m src.main --help

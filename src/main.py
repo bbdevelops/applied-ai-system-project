@@ -2,15 +2,18 @@
 Command line runner for the Music Recommender Simulation.
 
 Run from the project root with:
-    python -m src.main                          # default: High-Energy Pop
-    python -m src.main --profile chill_lofi     # specific profile
-    python -m src.main --all                    # all profiles in sequence
-    python -m src.main --help                   # list available profiles
+    python -m src.main                                         # default: High-Energy Pop, balanced
+    python -m src.main --profile chill_lofi                   # specific profile
+    python -m src.main --all                                   # all profiles in sequence
+    python -m src.main --mode genre-first                      # genre-first scoring mode
+    python -m src.main --profile chill_lofi --mode mood-first  # profile + mode combined
+    python -m src.main --all --mode energy-focused             # all profiles, energy-focused mode
+    python -m src.main --help                                  # list available profiles and modes
 """
 
 import argparse
 
-from src.recommender import load_songs, recommend_songs
+from src.recommender import load_songs, recommend_songs, SCORING_MODES
 
 
 PROFILES = {
@@ -92,14 +95,14 @@ PROFILES = {
 }
 
 
-def run_profile(user_prefs: dict, songs: list) -> None:
+def run_profile(user_prefs: dict, songs: list, mode: str = "balanced") -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
     print(f"\n{'=' * 50}")
-    print(f"  Profile: {label}")
+    print(f"  Profile: {label}  |  Mode: {mode}")
     print(f"{'=' * 50}")
 
-    recommendations = recommend_songs(user_prefs, songs, k=5)
+    recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode)
 
     print("\nTop recommendations:\n")
     for rank, (song, score, explanation) in enumerate(recommendations, start=1):
@@ -112,7 +115,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Music Recommender Simulation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Available profiles:\n  " + "\n  ".join(PROFILES.keys()),
+        epilog=(
+            "Available profiles:\n  " + "\n  ".join(PROFILES.keys()) +
+            "\n\nAvailable modes:\n  " + "\n  ".join(SCORING_MODES.keys())
+        ),
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -125,6 +131,13 @@ def main() -> None:
         "--all",
         action="store_true",
         help="Run all profiles in sequence",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=list(SCORING_MODES.keys()),
+        default="balanced",
+        metavar="MODE",
+        help=f"Scoring mode. Choices: {', '.join(SCORING_MODES.keys())} (default: balanced)",
     )
     args = parser.parse_args()
 
@@ -139,7 +152,7 @@ def main() -> None:
         profiles_to_run = [PROFILES["high_energy_pop"]]
 
     for user_prefs in profiles_to_run:
-        run_profile(user_prefs, songs)
+        run_profile(user_prefs, songs, mode=args.mode)
 
 
 if __name__ == "__main__":
