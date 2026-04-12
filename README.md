@@ -17,17 +17,28 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Real-world music recommenders like Spotify and TikTok build a mathematical fingerprint for each song using measurable audio features — things like energy, tempo, and emotional positivity (valence) — and then find songs whose fingerprints are close to what a user has previously enjoyed. They combine two main strategies: **content-based filtering** (matching song audio profiles to a user's stated or inferred taste) and **collaborative filtering** (finding users with similar listening histories and surfacing what they enjoyed). This simulation focuses on **content-based filtering**, using the emotional and kinetic feel of each song — primarily the valence-energy "vibe matrix" — as its scoring foundation, with genre and mood acting as guardrails to keep recommendations coherent.
 
-Some prompts to answer:
+### `Song` Features
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+| Feature | Type | Role |
+|---|---|---|
+| `genre` | categorical | Match/no-match guardrail |
+| `mood` | categorical | Match/no-match guardrail |
+| `energy` | float (0–1) | Core "vibe" axis — intensity and activity |
+| `valence` | float (0–1) | Core "vibe" axis — musical positivity/happiness |
+| `acousticness` | float (0–1) | Texture: acoustic instruments vs. electronic |
+| `tempo_bpm` | float | Structural pacing — BPM |
+| `danceability` | float (0–1) | Rhythmic suitability for dancing |
 
-You can include a simple diagram or bullet list if helpful.
+### `UserProfile` Fields
+
+| Field | Type | Purpose |
+|---|---|---|
+| `favorite_genre` | str | Preferred genre (e.g. `"pop"`, `"lofi"`) |
+| `favorite_mood` | str | Preferred mood tag (e.g. `"chill"`, `"happy"`) |
+| `target_energy` | float | Desired energy level (0.0–1.0) |
+| `likes_acoustic` | bool | Whether user prefers acoustic over electronic texture |
 
 ---
 
