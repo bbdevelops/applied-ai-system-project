@@ -129,6 +129,10 @@ pip install -r requirements.txt
 ```bash
 python -m src.main
 ```
+### Example of Results from Terminal
+Demo output for a "pop/happy" profile.
+
+![Terminal Output Results](/img/terminal_output_results1.png)
 
 ### Running Tests
 
