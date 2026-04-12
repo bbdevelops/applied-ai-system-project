@@ -2,60 +2,55 @@
 
 ## 1. Model Name  
 
-Give your model a short, descriptive name.  
-Example: **VibeFinder 1.0**  
+**Resonance Selector 1.0**  
 
 ---
 
 ## 2. Intended Use  
 
-Describe what your recommender is designed to do and who it is for. 
+Resonance Selector is designed for casual music fans who want to discover new songs that match their current taste. You give it a genre, a mood, and a general energy level, and it returns a ranked list of tracks from the catalog that fit your vibe.
 
-Prompts:  
+The system assumes you have a rough sense of what you like — your favorite genre, whether you want something calm or intense, and whether acoustic sound appeals to you. It does not require deep music knowledge, but it does ask you to express preferences as simple values rather than in free-form language.
 
-- What kind of recommendations does it generate  
-- What assumptions does it make about the user  
-- Is this for real users or classroom exploration  
+**This system is not intended for:** professional music curation, real-world streaming platforms, large catalogs, or any context that requires legal compliance or fairness guarantees. It is a simplified simulation meant for personal exploration.  
 
 ---
 
 ## 3. How the Model Works  
 
-Explain your scoring approach in simple language.  
+Every song in the catalog has two kinds of information: labels and numbers. The labels are the genre (like "pop" or "lofi") and the mood (like "happy" or "intense"). The numbers describe how the song actually sounds — how much energy it has, how fast the tempo is, how emotionally positive it feels, how acoustic it sounds, and how danceable it is. All of these numbers fall on a scale from 0.0 to 1.0.
 
-Prompts:  
+When you set up a profile, you tell the system your favorite genre, your preferred mood, and your target energy level.
 
-- What features of each song are used (genre, energy, mood, etc.)  
-- What user preferences are considered  
-- How does the model turn those into a score  
-- What changes did you make from the starter logic  
+The system then goes through every song in the catalog and asks two questions for each one: does the label match, and how close are the numbers?
 
-Avoid code here. Pretend you are explaining the idea to a friend who does not program.
+If the song's genre matches your preference, it gets a fixed bonus of 2.5 points. A mood match adds another 1.5 points. These are the biggest single rewards in the whole system.
+
+For the numerical features, the system measures the gap between the song's value and your target. A song with an energy of 0.80 scores higher for a user who wants 0.85 energy than for one who wants 0.20. Each numerical feature has its own multiplier: energy matters the most (×2.0), followed by emotional positivity or valence (×1.5), acousticness (×1.0), tempo (×0.75), and danceability (×0.5).
+
+Once every song has a total score, the list is sorted from highest to lowest. The top results are the recommendation.
 
 ---
 
 ## 4. Data  
 
-Describe the dataset the model uses.  
+The catalog contains 20 songs — the original 10 from the starter dataset and 10 more added to increase diversity.
 
-Prompts:  
+**Genres represented (16 total):** pop, lofi, rock, ambient, jazz, synthwave, indie pop, punk, hip-hop, folk, classical, r&b, edm, blues, metal, soul
 
-- How many songs are in the catalog  
-- What genres or moods are represented  
-- Did you add or remove data  
-- Are there parts of musical taste missing in the dataset  
+**Moods represented:** happy, chill, intense, relaxed, focused, moody, confident, nostalgic, melancholic, euphoric, angry, uplifting, aggressive
+
+Energy values range from 0.21 (very calm) to 0.97 (near maximum intensity), which gives the system a meaningful spread to work with.
+
+**What is missing:** Jazz, blues, classical, and metal each appear only once in the catalog. Non-Western genres and styles — bossa nova, afrobeats, K-pop, reggaeton — are entirely absent. The dataset skews toward pop and lofi, which means those genres get better recommendations while niche listeners run out of real matches after the first or second result.  
 
 ---
 
 ## 5. Strengths  
 
-Where does your system seem to work well  
+The system works best for listeners whose taste aligns with a well-represented genre and a clear energy level. The Chill Lofi and Deep Intense Rock profiles produced the most reliable results: both genres have multiple songs in the catalog, and the energy spread in those groups is distinct enough that the proximity scoring can separate close matches from weak ones. For the lofi listener, "Library Rain" and "Midnight Coding" ranked at the top — both feel genuinely appropriate. For the rock listener, "Storm Runner" was the clear winner.
 
-Prompts:  
-
-- User types for which it gives reasonable results  
-- Any patterns you think your scoring captures correctly  
-- Cases where the recommendations matched your intuition  
+The scoring logic also captures mood-energy coherence well when the genre label is a good fit. When a user's genre preference matches the catalog's strongest group, the numerical features (energy, valence, acousticness) do useful work to rank songs within that group by feel, not just by category. In those cases, the system's output matches the kind of intuition a person would have when flipping through a playlist.  
 
 ---
 
@@ -113,23 +108,18 @@ The experiment confirmed that the best weight balance depends on the use case. G
 
 ## 8. Future Work  
 
-Ideas for how you would improve the model next.  
+**Larger and more diverse dataset.** The most immediate limitation is the 20-song catalog. Expanding to hundreds of songs — with meaningful representation for jazz, blues, classical, folk, and non-Western styles — would make the system useful for a much wider range of listeners. Right now the system cannot tell the difference between "no songs match your taste" and "your genre just isn't in the catalog."
 
-Prompts:  
-
-- Additional features or preferences  
-- Better ways to explain recommendations  
-- Improving diversity among the top results  
-- Handling more complex user tastes  
+**User-configurable weights.** The current scoring weights are fixed: genre always matters 2.5 points, energy always uses a ×2.0 multiplier. But the weight-shift experiment showed that the best balance depends on the listener. A future version could let users specify at runtime how much each feature matters to them — for example, "I care more about energy than genre today." This would turn a one-size-fits-all algorithm into a genuinely flexible tool.  
 
 ---
 
 ## 9. Personal Reflection  
 
-A few sentences about your experience.  
+The biggest thing I learned from this project is how much a small dataset limits what a recommender can actually do. I knew the catalog was small, but I did not fully appreciate what that meant until I ran the Focused Jazz profile and got lofi songs back. There is only one jazz track in the whole catalog. After that, the system has nothing to work with — it just finds the nearest thing it has, which is not the same as what the user actually wants. That gap between "no match found" and "wrong match returned" is invisible unless you test it.
 
-Prompts:  
+AI tools were genuinely useful during the build, but in a specific way: they handled the repetitive structural work — the CSV loading, the function scaffolding, the output formatting — which freed up my attention for the parts that actually mattered, like verifying that the scoring math produced sensible results. Every time the AI generated a scoring function or a weighting rule, I had to check it against my own logic. That verification step was where most of the real learning happened.
 
-- What you learned about recommender systems  
-- Something unexpected or interesting you discovered  
-- How this changed the way you think about music recommendation apps  
+What surprised me most was how much a few simple weighted comparisons can feel like a real recommendation. When the system returned "Library Rain" and "Midnight Coding" for the Chill Lofi profile, it felt right — not because there was anything intelligent happening, but because the math happened to capture the same intuition a person would use. There is no machine learning here, no training data, no neural network. Just subtraction and multiplication. And yet the output feels personal.
+
+If I extended this project, the first thing I would add is user-adjustable weights at runtime. The weight-shift experiment made it clear that there is no single best balance between genre and energy — it depends on what the listener cares about in that moment. Letting users tune that directly would make the system much more honest about what it is actually measuring.  
