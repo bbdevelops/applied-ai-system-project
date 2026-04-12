@@ -129,7 +129,7 @@ pip install -r requirements.txt
 ```bash
 python -m src.main
 ```
-### Example of Results from Terminal
+### Example of Results from Initial Terminal
 Demo output for a "pop/happy" profile.
 
 ![Terminal Output Results](/img/terminal_output_results1.png)
@@ -145,6 +145,23 @@ pytest
 You can add more tests in `tests/test_recommender.py`.
 
 ---
+## Output for various different user profiles:
+
+High-Energy Pop
+![Terminal Output Results](/img/terminal_output_results_high-energy_pop.png)
+
+Chill Lofi
+![Terminal Output Results](/img/terminal_output_results_chill_lofi.png)
+
+Deep Intense Rock
+![Terminal Output Results](/img/terminal_output_results_deep_intense_rock.png)
+
+Conflicting Moods (Edge Case)
+![Terminal Output Results](/img/terminal_output_results_conflicting_moods.png)
+
+Focused Jazz
+![Terminal Output Results](/img/terminal_output_results_focused_jazz.png)
+
 
 ## Experiments You Tried
 
