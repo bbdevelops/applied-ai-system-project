@@ -167,6 +167,10 @@ pip install -r requirements.txt
 python -m src.main
 ```
 
+## Expected Output
+High-Energy Pop
+![Terminal Output Results High-Energy Pop Balanced](img\terminal_output_results_rich_high-energy_pop_balanced.png)
+
 ### CLI Flags
 
 The recommender is controlled entirely from the command line. All commands are run from the project root.
@@ -234,11 +238,6 @@ python -m src.main --all --diversity --mode genre-first
 # See all available options
 python -m src.main --help
 ```
-
-### Example of Results from Initial Terminal
-Demo output for a "pop/happy" profile.
-
-![Terminal Output Results](/img/terminal_output_results1.png)
 
 ### Running Tests
 
