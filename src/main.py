@@ -15,6 +15,15 @@ Run from the project root with:
 
 import argparse
 
+try:
+    from rich.console import Console as _Console
+    from rich.table import Table as _Table
+    from rich import box as _box
+    _RICH_CONSOLE = _Console()
+    _HAS_RICH = True
+except ImportError:
+    _HAS_RICH = False
+
 from src.recommender import load_songs, recommend_songs, SCORING_MODES
 
 
@@ -97,6 +106,57 @@ PROFILES = {
 }
 
 
+def display_table(recommendations: list) -> None:
+    """Render recommendations as a color-coded table with per-song scoring reasons."""
+    if _HAS_RICH:
+        table = _Table(box=_box.ROUNDED, show_lines=True, highlight=True)
+        table.add_column("#",             style="bold cyan",  justify="center", width=3)
+        table.add_column("Title",         style="bold white")
+        table.add_column("Artist",        style="magenta")
+        table.add_column("Genre",         style="yellow")
+        table.add_column("Score",         justify="right", width=7)
+        table.add_column("Why (Reasons)", overflow="fold")
+
+        for rank, (song, score, explanation) in enumerate(recommendations, start=1):
+            if score >= 10:
+                score_str = f"[bold green]{score:.2f}[/bold green]"
+            elif score >= 5:
+                score_str = f"[yellow]{score:.2f}[/yellow]"
+            else:
+                score_str = f"[red]{score:.2f}[/red]"
+
+            colored_reasons = []
+            for reason in explanation.split(" | "):
+                if "penalty" in reason:
+                    colored_reasons.append(f"[dim red]{reason}[/dim red]")
+                elif "match" in reason:
+                    colored_reasons.append(f"[green]{reason}[/green]")
+                elif "closeness" in reason or "fit" in reason:
+                    colored_reasons.append(f"[cyan]{reason}[/cyan]")
+                else:
+                    colored_reasons.append(reason)
+
+            row_style = "bold" if rank == 1 else ""
+            table.add_row(
+                str(rank),
+                song["title"],
+                song["artist"],
+                song["genre"],
+                score_str,
+                "\n".join(colored_reasons),
+                style=row_style,
+            )
+
+        _RICH_CONSOLE.print(table)
+
+    else:
+        for rank, (song, score, explanation) in enumerate(recommendations, start=1):
+            print(f"{rank}. {song['title']} by {song['artist']}  [Score: {score:.2f}]")
+            reasons = "\n   ".join(explanation.split(" | "))
+            print(f"   Because:\n   {reasons}")
+            print()
+
+
 def run_profile(user_prefs: dict, songs: list, mode: str = "balanced", diversity: bool = False) -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
@@ -108,10 +168,7 @@ def run_profile(user_prefs: dict, songs: list, mode: str = "balanced", diversity
     recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode, diversity=diversity)
 
     print("\nTop recommendations:\n")
-    for rank, (song, score, explanation) in enumerate(recommendations, start=1):
-        print(f"{rank}. {song['title']} by {song['artist']}  [Score: {score:.2f}]")
-        print(f"   Because: {explanation}")
-        print()
+    display_table(recommendations)
 
 
 def main() -> None:

@@ -89,22 +89,35 @@ Penalty values were chosen to mirror the corresponding match bonuses in balanced
 
 ```mermaid
 flowchart TD
-    A[User Profile] --> D
-    B[songs.csv - 20 songs] --> C[load_songs]
-    C --> D[recommend_songs]
-    D -->|for each song| E[score_song]
-    E --> F{genre match?}
-    F -->|+2.5 pts| I[running score]
-    F -->|+0 pts| I
-    E --> G{mood match?}
-    G -->|+1.5 pts| I
-    G -->|+0 pts| I
-    E --> H["Weighted Closeness<br/>energy ×2.0, <br/>valence ×1.5,<br/>acousticness ×1.0, <br/> tempo ×0.75,<br/> danceability ×0.5"]
-    H --> I
-    I --> J[score + reasons list]
-    J --> D
-    D --> K[sort all songs descending]
-    K --> L[Top K Recommendations]
+    UP["User Profile<br/>genre, mood, energy, valence,<br/>acousticness, tempo, danceability,<br/>popularity, decade, detailed_mood,<br/>instrumentalness, language"]
+    CSV["songs.csv<br/>20 songs, 15 attributes"]
+    MODE["--mode<br/>balanced / genre-first<br/>mood-first / energy-focused"]
+    DF["--diversity"]
+
+    CSV --> LS[load_songs]
+    UP --> RS
+    MODE --> RS
+    LS --> RS[recommend_songs]
+
+    RS -->|for each song| SS[score_song]
+
+    SS --> CAT["Categorical Matches<br/>genre +2.5, mood +1.5,<br/>detailed mood +1.0, language +0.75"]
+    CAT --> SC[running score]
+
+    SS --> WC["Weighted Closeness<br/>energy x2.0, valence x1.5, acousticness x1.0,<br/>instrumentalness x1.0, tempo x0.75,<br/>popularity x0.75, decade x0.75, danceability x0.5"]
+    WC --> SC
+
+    SC --> SRL["score + reasons"]
+    SRL --> RS
+
+    RS --> SORT["sort by score descending"]
+    SORT --> DIVQ{"--diversity?"}
+    DF --> DIVQ
+    DIVQ -->|No| TOP["Top 5 Results"]
+    DIVQ -->|Yes| GREEDY["Greedy selection loop<br/>-2.0 duplicate artist<br/>-1.5 duplicate genre"]
+    GREEDY --> TOP
+
+    TOP --> DT["display_table<br/>rich color-coded table<br/>Rank, Title, Artist, Genre, Score, Why"]
 ```
 
 ### Starter User Profile
@@ -241,19 +254,19 @@ You can add more tests in `tests/test_recommender.py`.
 ## Output for various different user profiles:
 
 High-Energy Pop
-![Terminal Output Results](/img/terminal_output_results_high-energy_pop.png)
+![Terminal Output Results](/img/terminal_output_results_rich_high-energy_pop.png)
 
 Chill Lofi
-![Terminal Output Results](/img/terminal_output_results_chill_lofi.png)
+![Terminal Output Results](/img/terminal_output_results_rich_chill_lofi.png)
 
 Deep Intense Rock
-![Terminal Output Results](/img/terminal_output_results_deep_intense_rock.png)
+![Terminal Output Results](/img/terminal_output_results_rich_deep_intense_rock.png)
 
 Conflicting Moods (Edge Case)
-![Terminal Output Results](/img/terminal_output_results_conflicting_moods.png)
+![Terminal Output Results](/img/terminal_output_results_rich_conflicting_moods.png)
 
 Focused Jazz
-![Terminal Output Results](/img/terminal_output_results_focused_jazz.png)
+![Terminal Output Results](/img/terminal_output_results_rich_focused_jazz.png)
 
 
 ## Experiments You Tried

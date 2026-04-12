@@ -24,9 +24,9 @@ When you set up a profile, you tell the system your favorite genre, your preferr
 
 The system then goes through every song in the catalog and asks two questions for each one: does the label match, and how close are the numbers?
 
-If the song's genre matches your preference, it gets a fixed bonus of 2.5 points. A mood match adds another 1.5 points. These are the biggest single rewards in the whole system.
+If the song's genre matches your preference, it gets a fixed bonus of 2.5 points. A mood match adds another 1.5 points. A matching detailed mood tag (e.g., "euphoric," "nostalgic," "aggressive") adds 1.0 points, and a matching language style (e.g., "english" vs. "instrumental") adds 0.75 points. These four categorical checks are the discrete, label-based half of the scoring.
 
-For the numerical features, the system measures the gap between the song's value and your target. A song with an energy of 0.80 scores higher for a user who wants 0.85 energy than for one who wants 0.20. Each numerical feature has its own multiplier. In the default **balanced** mode: energy matters the most (×2.0), followed by emotional positivity or valence (×1.5), acousticness (×1.0), tempo (×0.75), and danceability (×0.5).
+For the numerical features, the system measures the gap between the song's value and your target. A song with an energy of 0.80 scores higher for a user who wants 0.85 energy than for one who wants 0.20. Each feature has its own multiplier. In the default **balanced** mode: energy matters most (×2.0), followed by emotional positivity or valence (×1.5), acousticness (×1.0), and instrumentalness — the vocal-to-instrumental ratio — (×1.0). Tempo, popularity proximity, and era alignment (release decade) each contribute at ×0.75, and danceability at ×0.5.
 
 The system also supports three alternative **scoring modes** selectable via a `--mode` CLI flag. Each mode boosts one dimension's weights while suppressing the others, creating real trade-offs rather than just adding points on top:
 
