@@ -40,6 +40,71 @@ Real-world music recommenders like Spotify and TikTok build a mathematical finge
 | `target_energy` | float | Desired energy level (0.0–1.0) |
 | `likes_acoustic` | bool | Whether user prefers acoustic over electronic texture |
 
+### Scoring Algorithm
+
+Rather than a flat points-for-category-match system, this simulation uses a **weighted closeness model**. Every feature contributes a score proportional to how similar the song is to the user's preferences, so distance matters — not just match/no-match.
+
+**Categorical (binary):**
+- Genre match: **+2.5 pts**
+- Mood match: **+1.5 pts**
+
+**Continuous feature closeness** — each feature earns `(1 − |song_value − user_value|) × weight`:
+
+| Feature | Weight | Rationale |
+|---|---|---|
+| `energy` | ×2.0 | Strongest predictor of perceived vibe |
+| `valence` | ×1.5 | Emotional positivity — the core "feel" of a song |
+| `acousticness` | ×1.0 / ×0.75 | Full weight if `likes_acoustic=True`, reduced otherwise |
+| `tempo_bpm` | ×0.75 | BPM normalized to 0–1 scale (60–200 BPM range) before scoring |
+| `danceability` | ×0.5 | Secondary preference signal |
+
+**Maximum possible score: ~9.75 pts**
+
+**Why this outperforms a flat recipe:** A flat +2.0 genre / +1.0 mood system treats all songs in the same genre as equally good. The closeness model penalizes songs that drift far on energy or valence even within the same genre — so an intense lofi track won't score the same as a calm focused lofi track when the user wants something quiet.
+
+### Data Flow
+
+```mermaid
+flowchart TD
+    A[User Profile] --> D
+    B[songs.csv - 20 songs] --> C[load_songs]
+    C --> D[recommend_songs]
+    D -->|for each song| E[score_song]
+    E --> F{genre match?}
+    F -->|+2.5 pts| I[running score]
+    F -->|+0 pts| I
+    E --> G{mood match?}
+    G -->|+1.5 pts| I
+    G -->|+0 pts| I
+    E --> H["Weighted Closeness<br/>energy ×2.0, <br/>valence ×1.5,<br/>acousticness ×1.0, <br/> tempo ×0.75,<br/> danceability ×0.5"]
+    H --> I
+    I --> J[score + reasons list]
+    J --> D
+    D --> K[sort all songs descending]
+    K --> L[Top K Recommendations]
+```
+
+### Starter User Profile
+
+The default profile for initial testing:
+
+```python
+user_prefs = {
+    "genre": "lofi",
+    "mood": "focused",
+    "energy": 0.45,
+    "likes_acoustic": True
+}
+```
+
+Represents a user who prefers calm, acoustic-leaning background music for focused work. Expected top results: *Focus Flow*, *Midnight Coding*, *Library Rain*.
+
+### Potential Biases
+
+- **Genre dominance:** The +2.5 genre bonus means even a mediocre genre match will often beat an excellent cross-genre fit. A perfect energy/valence/mood alignment in the wrong genre will almost always lose.
+- **Small catalog effect:** With 20 songs, rare moods like `euphoric` or `aggressive` have only one representative track each. A mood match there wins by default rather than by merit.
+- **Acoustic binary:** `likes_acoustic` is a single boolean — it can't capture context-specific preferences (e.g., "acoustic folk yes, acoustic slow ballads no"), which may over- or under-penalize songs depending on the profile.
+
 ---
 
 ## Getting Started
