@@ -1,21 +1,21 @@
-id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
-1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18
-2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71
-3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10
-4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86
-5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05
-6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92
-7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89
-8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22
-9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78
-10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35
-11,Static Youth,Voltage Riot,punk,angry,0.88,168,0.32,0.61,0.04
-12,City Lights Flow,Verse King,hip-hop,confident,0.72,95,0.66,0.84,0.08
-13,Old Pine Road,Clara Mast,folk,nostalgic,0.31,88,0.74,0.45,0.91
-14,Village Dance,The Brass Boots,polka,happy,0.89,148,0.92,0.87,0.54
-15,Still Waters,Elara Quinn,classical,melancholic,0.21,66,0.42,0.22,0.97
-16,Velvet Night,Sable Rhodes,r&b,moody,0.61,97,0.58,0.76,0.31
-17,Pulse Wave,Circuit Break,edm,euphoric,0.96,142,0.71,0.93,0.02
-18,Delta Midnight,Hollow Reed,blues,melancholic,0.38,82,0.40,0.51,0.72
-19,Iron Echo,Forge,metal,aggressive,0.97,176,0.24,0.52,0.03
-20,Morning Light,Velma Cross,soul,uplifting,0.55,94,0.85,0.68,0.62
+id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness,popularity,release_decade,detailed_mood_tag,instrumentalness,language
+1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18,82,2020,uplifting,0.04,english
+2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71,65,2020,peaceful,0.72,instrumental
+3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10,71,2010,aggressive,0.08,english
+4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86,58,2020,nostalgic,0.85,instrumental
+5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05,88,2020,euphoric,0.02,english
+6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92,47,2010,dreamy,0.90,instrumental
+7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89,55,2000,nostalgic,0.62,english
+8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22,74,2010,nostalgic,0.15,english
+9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78,61,2020,peaceful,0.78,instrumental
+10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35,76,2010,uplifting,0.03,english
+11,Static Youth,Voltage Riot,punk,angry,0.88,168,0.32,0.61,0.04,63,2000,aggressive,0.05,english
+12,City Lights Flow,Verse King,hip-hop,confident,0.72,95,0.66,0.84,0.08,79,2010,euphoric,0.04,english
+13,Old Pine Road,Clara Mast,folk,nostalgic,0.31,88,0.74,0.45,0.91,52,2000,nostalgic,0.20,english
+14,Village Dance,The Brass Boots,polka,happy,0.89,148,0.92,0.87,0.54,38,1990,euphoric,0.45,multilingual
+15,Still Waters,Elara Quinn,classical,melancholic,0.21,66,0.42,0.22,0.97,44,1990,melancholic,0.96,instrumental
+16,Velvet Night,Sable Rhodes,r&b,moody,0.61,97,0.58,0.76,0.31,72,2010,romantic,0.06,english
+17,Pulse Wave,Circuit Break,edm,euphoric,0.96,142,0.71,0.93,0.02,84,2020,euphoric,0.18,instrumental
+18,Delta Midnight,Hollow Reed,blues,melancholic,0.38,82,0.40,0.51,0.72,48,2000,melancholic,0.30,english
+19,Iron Echo,Forge,metal,aggressive,0.97,176,0.24,0.52,0.03,67,2010,aggressive,0.07,english
+20,Morning Light,Velma Cross,soul,uplifting,0.55,94,0.85,0.68,0.62,70,2000,uplifting,0.12,english
