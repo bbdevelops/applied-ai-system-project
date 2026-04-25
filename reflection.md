@@ -49,3 +49,23 @@ The one thing worth noting is that Morning Light (soul, uplifting, energy 0.55) 
 The system handles profiles that are far apart better than profiles that are close together. When two profiles share a high energy target but differ on genre, the genre bonus is strong enough to separate them cleanly. When two profiles share a genre and energy level but differ on mood, the results start to look similar — and the differences come down to a +1.5 mood bonus that may or may not flip one song above another.
 
 The bigger pattern: the system is only as good as the catalog behind it. Profiles that land on well-represented genres (pop, lofi, rock) get recommendations that feel right. Profiles that land on thin genres (jazz, blues, classical) get the closest available approximation, whether or not it actually fits. No amount of weight-tuning fixes a catalog gap.
+
+---
+
+## What the v2.0 Reliability Harness Changed
+
+The harness's biggest contribution is making the catalog-gap problem *visible* rather than fixing it. For the `focused_jazz` profile under `mood-first` mode, the system used to silently return lofi tracks with no commentary. Now the harness flags low confidence (0.36 below the 0.40 threshold), tries the fallback ladder, and prints a yellow notice telling the user the strategy changed. The recommendations themselves did not get more jazz-like — there is still only one jazz song. But the user can now see when the system is making an approximation versus when it has a real match.
+
+The most informative cases are the ones where the ladder *cannot* improve confidence. The `conflicting_moods` profile fails on every rung — switching modes, enabling diversity, dropping the mood preference — and the harness records each attempt before returning the best of a bad set. The eval script counts these as legitimate "fallback exhausted" cases (12 out of 40 matrix runs). That count is itself a reliability signal: if a future version of the catalog adds songs that resolve the contradiction, the count should drop. The harness has turned a hidden failure mode into a measurable metric.
+
+---
+
+## AI Collaboration Notes
+
+The v2.0 build leaned on AI-assisted code suggestions for the harness module structure, the test scaffolding, and the markdown knowledge base content.
+
+**One genuinely helpful suggestion:** the AI proposed a *strategy ladder* for the fallback loop instead of a single fallback (e.g., "switch to balanced mode when confidence is low"). The ladder — switch mode, then enable diversity, then drop the weakest categorical preference — is what makes the harness observably interesting in the demo. A single fallback would have produced one alternative ranking and stopped; the ladder produces a recorded trace of three alternatives and demonstrates that some bad profiles can't be repaired no matter what strategy you try. That visible-failure case (the `conflicting_moods` profile exhausting all rungs) is the strongest argument that the system is doing real reliability work rather than just printing a confidence number.
+
+**One flawed suggestion:** the AI initially recommended building the RAG retriever using sentence-transformers embeddings (a 500MB+ download). For a 38-document corpus retrieved by exact category match, this is wildly oversized — the retriever does not even need ranking, just lookup. The simpler approach is filename-based exact matching with a slug normalizer, which is what the final code does. I almost accepted the embedding suggestion before realizing the catalog is small enough that the retriever does not need to be fancy at all. This is a recurring pattern with AI-suggested architecture: the suggestions assume a scale and complexity the project does not have, and the cost of accepting them is dependency bloat that makes the system harder to reproduce.
+
+**Surprising finding from testing reliability:** I expected the harness to dramatically improve recommendations for the conflicting profile. It did not. What it did instead — make the system's behavior visible and recorded — turned out to be more valuable than fixing the underlying problem. A reliability layer is not a magic-fix layer; it is a layer that makes the limits of the underlying system legible to the user.

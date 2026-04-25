@@ -2,7 +2,7 @@
 
 ## 1. Model Name  
 
-**Resonance Selector 1.0**  
+**Resonance Selector 2.0** *(extends Resonance Selector 1.0 with a reliability harness, evaluation script, and RAG-enriched explanations)*
 
 ---
 
@@ -39,6 +39,38 @@ Once every song has a total score, the list is sorted from highest to lowest. Th
 **Optional: Diversity Penalty (`--diversity`)**
 
 By default the sorted list is sliced directly, which can produce results dominated by one artist or genre. Enabling `--diversity` replaces the slice with a greedy selection loop: the system builds the top-5 list one pick at a time, applying a soft penalty to any candidate whose artist or genre is already in the selected set (−2.0 pts for a duplicate artist, −1.5 pts for a duplicate genre). The penalty is shown in each song's explanation so the trade-off is transparent. Songs are discouraged from repeating but never outright blocked — a strong enough song from a repeated genre can still appear.
+
+---
+
+## 3a. Reliability Mechanisms (added in v2.0)
+
+Version 2.0 wraps the deterministic core in a reliability harness that catches bad inputs, scores how confident the system is in each result, and *automatically tries alternative strategies* when confidence is low. The mechanism is integrated into the main call path: `recommend_with_harness()` is the entry point used by `main.py`, not a separate post-hoc analyzer.
+
+**Input guardrails** (`src/harness/validators.py`):
+- Required user-profile keys (`genre`, `mood`, `energy`) must be present or the call fails fast with `HarnessError`.
+- Out-of-range numerics (e.g. `energy = 1.5`) are clamped to valid ranges with a warning recorded on the run report.
+- The catalog itself is validated on every call: duplicate song ids fail fast; rows with NaN/Inf in unit-interval features are dropped with a warning; an empty catalog raises.
+
+**Confidence score** (`src/harness/confidence.py`) combines three signals into one [0, 1] number:
+- `gap_score` — how far the top result is above the rest of the top-5 (normalized against ~14-pt max).
+- `categorical_match_pct` — fraction of the top-5 whose genre or mood matches the user's preference.
+- `diversity_score` — penalizes top-5 sets dominated by one artist or genre.
+- `overall = 0.5*gap + 0.3*categorical + 0.2*diversity`. The default fallback threshold is 0.4.
+
+**Self-critique fallback ladder** (`src/harness/critique.py`) — when initial confidence falls below the threshold, the harness climbs three rungs in order, retaining the best result of all attempts:
+1. Switch scoring mode (`balanced↔mood-first`, `genre-first→mood-first`, `energy-focused→balanced`).
+2. Enable the diversity penalty (if it was off).
+3. Drop the categorical preference (`genre` or `mood`) with the fewest catalog matches — the user's "weakest" anchor.
+
+Every rung's confidence is recorded on the `HarnessReport` returned alongside the recommendations, so the user (and the run log) can see exactly how the system's strategy evolved. When a fallback fires, the CLI prints a yellow notice above the table summarizing the change.
+
+**Output guardrails** — before the table is shown, results are deduped by song id, NaN-scored rows are dropped, the list is sorted descending with deterministic id-ascending tiebreak, and length is enforced to `min(k, catalog_size)`.
+
+**Run logging** (`src/harness/logging_utils.py`) — every call writes a JSON file to `/logs/` capturing the report, the result list, and a timestamp. This creates an audit trail without ever touching the deterministic scoring code.
+
+**Evaluation harness** (`scripts/evaluate.py`) — runs the full 5-profile × 4-mode × 2-diversity matrix (40 configurations) plus 12 edge cases against a golden baseline (`tests/golden/expected_outputs.json`). The baseline records the catalog hash, weights hash, and per-config top-5 song ids and rounded scores. Drift handling is layered: if the catalog or weights hash changes, the script reports `BASELINE STALE` (no false-positive failures); if scores drift but the ranking is stable, a soft warning fires; only a changed top-5 id list triggers a hard fail with a diff. At v2.0 release, **40/40 matrix runs and 12/12 edge cases pass**, with fallback triggering on 30% of matrix runs (entirely on the adversarial `conflicting_moods` profile and the small-catalog `focused_jazz` profile).
+
+**RAG enrichment layer** (`src/rag/`, optional `--rag` flag) — for each recommendation, a TF-IDF-backed retriever pulls 1–3 markdown documents from `/docs/genres/`, `/docs/moods/`, and `/docs/detailed_moods/` matching the song's labels. The retrieved documents plus the user's preferences and the deterministic scoring reasons are batched into a single Google Gemini API call (`gemini-2.5-flash`) that returns one short grounded paragraph per song. The deterministic explanation is preserved; the RAG note is appended below it. When `GEMINI_API_KEY` is missing or the API call fails, the system warns and returns unenriched results — the deterministic core never depends on the LLM being available.
 
 ---
 
@@ -85,6 +117,14 @@ Every recommendation is made from a frozen snapshot of your preferences. There i
 **The system assumes you know yourself in numbers.**
 
 To get accurate results, you need to supply a precise energy value like 0.80 or a tempo target of 120 BPM. Real listeners do not think that way. Most people describe their taste in words — "something to work out to" or "background music for studying" — not fractions. This means the profile setup itself introduces error before any recommendation is made.
+
+**The reliability harness can mask catalog gaps rather than expose them (added in v2.0).**
+
+The fallback ladder is good at producing a result that *clears the confidence threshold*, but "cleared the threshold" is not the same as "matched what the user wanted." For the `focused_jazz` profile under `mood-first` mode, the harness falls back to `balanced` and confidence improves from 0.36 to 0.42 — but the underlying problem (only one jazz song in the catalog) is unchanged. The system has effectively learned to route around its own limitations without acknowledging them. The `--explain-harness` flag and the `/logs/` JSON output make these adjustments visible, but a user who only sees the final table will not know that the recommendation was built on a relaxed profile rather than the one they entered. This is a real cost of any self-correcting system: it can hide failure modes behind plausible output.
+
+**The RAG enrichment can sound more confident than the underlying data justifies (added in v2.0).**
+
+When `--rag` is enabled, Gemini generates polished natural-language paragraphs grounded in the retrieved markdown documents. Those documents describe each genre or mood in general terms, but they are not specific to the songs in the catalog. So the enriched explanation can confidently describe a song using language the document supplied, even when that language only loosely fits the actual track. The deterministic explanation remains visible alongside the RAG paragraph as a corrective, but a casual reader may anchor on the prose rather than the math.
 
 ---
 

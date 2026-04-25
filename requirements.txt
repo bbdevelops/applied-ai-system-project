@@ -2,3 +2,6 @@ pandas
 pytest
 streamlit
 rich
+scikit-learn
+google-generativeai
+python-dotenv

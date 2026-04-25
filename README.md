@@ -1,8 +1,22 @@
-# 🎵 Resonance Selector 1.0
+# 🎵 Resonance Selector 2.0
+
+> Resonance Selector 1.0 was a deterministic content-based music recommender (15-attribute weighted closeness scoring, 5 user profiles, 4 scoring modes, optional diversity penalty). Version 2.0 wraps that core in a **self-critique reliability harness** with input/output guardrails, confidence scoring, and an automatic fallback ladder, plus an optional **RAG-enriched explanation layer** that grounds natural-language commentary in a curated `/docs/` knowledge base via the Anthropic Claude API.
 
 ## Project Summary
 
-This simulation implements a **content-based music recommender** called Resonance Selector 1.0. You give it a taste profile — a preferred genre, mood, energy level, and a handful of other preferences — and it scores every song in the catalog using a weighted closeness model, then returns the top five matches with a plain-language explanation of why each track was chosen. The system supports 15 song attributes including advanced features like popularity, release decade, detailed mood tags, instrumentalness, and language style. An optional **diversity penalty** (`--diversity`) prevents the same artist or genre from monopolising the top results.
+This project implements a **content-based music recommender** called Resonance Selector 2.0. You give it a taste profile — a preferred genre, mood, energy level, and a handful of other preferences — and it scores every song in the catalog using a weighted closeness model, then returns the top five matches with a plain-language explanation of why each track was chosen. The system supports 15 song attributes including advanced features like popularity, release decade, detailed mood tags, instrumentalness, and language style. An optional **diversity penalty** (`--diversity`) prevents the same artist or genre from monopolising the top results.
+
+In version 2.0, every recommendation now goes through a **reliability harness** that validates the user profile, scores the result's confidence, and — when confidence falls below threshold — automatically tries a sequence of fallback strategies (switching scoring mode, enabling diversity, relaxing the weakest categorical preference) until either a better result is found or the strategies are exhausted. A standalone evaluation script (`scripts/evaluate.py`) runs the full profile × mode × diversity matrix plus a battery of edge cases and compares against a frozen golden baseline.
+
+### What's new in 2.0
+
+- **Self-critique fallback ladder** — `recommend_with_harness()` wraps `recommend_songs()` and triggers automatic strategy retries on low-confidence results. Visible to the user as a yellow notice above the table whenever a fallback fires.
+- **Input + output guardrails** — `src/harness/validators.py` clamps out-of-range numerics, drops malformed catalog rows, dedupes results, and enforces deterministic tiebreaks.
+- **Confidence scoring** — combines a top-vs-rest score gap, categorical-match coverage, and diversity into one [0, 1] reliability number.
+- **Run logging** — every harness call writes a JSON log to `/logs/` with the rung trace, warnings, and final result.
+- **Evaluation script** — `python -m scripts.evaluate` runs 40 matrix configurations + 12 edge cases against a golden baseline and prints a pass/fail summary.
+- **RAG-enriched explanations** (`--rag`) — TF-IDF retrieval over `/docs/genres/` and `/docs/moods/`, then a single Claude API call with prompt caching to generate grounded natural-language commentary.
+- **CLI additions** — `--explain-harness`, `--no-harness`, `--rag` for demo and A/B comparison.
 
 ---
 
@@ -85,7 +99,9 @@ Penalty values were chosen to mirror the corresponding match bonuses in balanced
 
 **Why this outperforms a flat recipe:** A flat +2.0 genre / +1.0 mood system treats all songs in the same genre as equally good. The closeness model penalizes songs that drift far on energy or valence even within the same genre — so an intense lofi track won't score the same as a calm focused lofi track when the user wants something quiet.
 
-### Data Flow
+### Data Flow (v2.0)
+
+The deterministic core (`load_songs`, `score_song`, `recommend_songs`, optional `--diversity` greedy loop) is unchanged from v1.0. Version 2.0 wraps it with input validation, confidence scoring, a fallback ladder, output validation, and optional RAG enrichment.
 
 ```mermaid
 flowchart TD
@@ -93,31 +109,65 @@ flowchart TD
     CSV["songs.csv<br/>20 songs, 15 attributes"]
     MODE["--mode<br/>balanced / genre-first<br/>mood-first / energy-focused"]
     DF["--diversity"]
+    RAGFLAG["--rag"]
 
+    UP --> VIN["validate_user_profile<br/>(input guardrail)"]
     CSV --> LS[load_songs]
-    UP --> RS
-    MODE --> RS
-    LS --> RS[recommend_songs]
+    LS --> VCAT["validate_catalog"]
+    VIN --> RWH["recommend_with_harness"]
+    VCAT --> RWH
+    MODE --> RWH
+    DF --> RWH
 
-    RS -->|for each song| SS[score_song]
+    subgraph CORE["deterministic core (v1.0, unchanged)"]
+        RS[recommend_songs] --> SS[score_song]
+        SS --> CAT["Categorical matches<br/>genre +2.5, mood +1.5,<br/>detailed_mood +1.0, language +0.75"]
+        SS --> WC["Weighted closeness<br/>energy x2.0, valence x1.5, ...<br/>(see 'Scoring Algorithm')"]
+        CAT --> SORT["sort by score desc"]
+        WC --> SORT
+        SORT --> DIVQ{"diversity?"}
+        DIVQ -->|Yes| GREEDY["Greedy diversity loop<br/>-2.0 dup artist, -1.5 dup genre"]
+        DIVQ -->|No| TOPK
+        GREEDY --> TOPK["top-K results"]
+    end
 
-    SS --> CAT["Categorical Matches<br/>genre +2.5, mood +1.5,<br/>detailed mood +1.0, language +0.75"]
-    CAT --> SC[running score]
+    RWH --> RS
+    TOPK --> CONF["compute_confidence<br/>gap, categorical, diversity"]
 
-    SS --> WC["Weighted Closeness<br/>energy x2.0, valence x1.5, acousticness x1.0,<br/>instrumentalness x1.0, tempo x0.75,<br/>popularity x0.75, decade x0.75, danceability x0.5"]
-    WC --> SC
+    CONF --> CHK{"overall < threshold?"}
+    CHK -->|No| VOUT
+    CHK -->|Yes, climb ladder| L1["rung 1: switch mode"]
+    L1 -.retry.-> RS
+    L1 --> L2["rung 2: enable diversity"]
+    L2 -.retry.-> RS
+    L2 --> L3["rung 3: drop weakest categorical"]
+    L3 -.retry.-> RS
+    L3 --> VOUT["validate_recommendations<br/>(output guardrail)"]
 
-    SC --> SRL["score + reasons"]
-    SRL --> RS
+    VOUT --> RAGQ{"--rag?"}
+    RAGFLAG --> RAGQ
+    RAGQ -->|Yes| RAG["src/rag<br/>Retriever (TF-IDF over /docs/)<br/>+ Claude API enricher"]
+    RAGQ -->|No| DT
+    RAG --> DT
 
-    RS --> SORT["sort by score descending"]
-    SORT --> DIVQ{"--diversity?"}
-    DF --> DIVQ
-    DIVQ -->|No| TOP["Top 5 Results"]
-    DIVQ -->|Yes| GREEDY["Greedy selection loop<br/>-2.0 duplicate artist<br/>-1.5 duplicate genre"]
-    GREEDY --> TOP
+    DT["display_table + HarnessReport<br/>(yellow fallback notice if triggered)"]
+    VOUT --> LOG["write_run_log -> /logs/"]
+```
 
-    TOP --> DT["display_table<br/>rich color-coded table<br/>Rank, Title, Artist, Genre, Score, Why"]
+**Evaluation flow** (separate; runs offline against the same harness):
+
+```mermaid
+flowchart LR
+    EV["scripts/evaluate.py"] --> MTX["matrix:<br/>5 profiles x 4 modes x 2 diversity"]
+    EV --> EDG["12 edge cases<br/>(empty catalog, unknown genre,<br/>NaN, duplicates, etc.)"]
+    MTX --> RWH2[recommend_with_harness]
+    EDG --> RWH2
+    RWH2 --> SIG["signature:<br/>top-5 ids + scores"]
+    SIG --> DIFF{"matches golden?"}
+    GOLD["tests/golden/<br/>expected_outputs.json"] --> DIFF
+    DIFF -->|hash mismatch| STALE["BASELINE STALE<br/>(no false-positive failures)"]
+    DIFF -->|ranking changed| FAIL["hard fail with diff"]
+    DIFF -->|stable| PASS["pass + summary block"]
 ```
 
 ### Starter User Profile
@@ -154,18 +204,40 @@ Represents a user who prefers calm, acoustic-leaning background music for focuse
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+   ```
 
-2. Install dependencies
+2. Install dependencies:
 
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. Run the app:
+3. *(Optional, only for `--rag`)* Add a free Google Gemini API key:
 
-```bash
-python -m src.main
-```
+   ```bash
+   cp .env.example .env
+   # then open .env and paste your key from https://aistudio.google.com/app/apikey
+   ```
+
+   The `--rag` flag falls back to deterministic explanations with a printed warning when the key is missing, so the rest of the system still works without it.
+
+4. Run the app:
+
+   ```bash
+   python -m src.main
+   ```
+
+5. Run the test suite:
+
+   ```bash
+   pytest
+   ```
+
+6. Run the evaluation harness:
+
+   ```bash
+   python -m scripts.evaluate
+   ```
 
 ## Expected Output
 
@@ -184,9 +256,15 @@ The recommender is controlled entirely from the command line. All commands are r
 | `python -m src.main --all` | Runs all five profiles in sequence |
 | `python -m src.main --mode <mode>` | Applies a scoring mode (see below); combines with `--profile` or `--all` |
 | `python -m src.main --diversity` | Enables the diversity penalty to reduce artist/genre repetition in top results |
+| `python -m src.main --explain-harness` | Prints the full self-critique report (rung trace, flags, warnings) under each table |
+| `python -m src.main --no-harness` | Bypasses the reliability harness — useful for direct A/B comparison demos |
+| `python -m src.main --rag` | Enriches each explanation with a RAG-grounded paragraph via Gemini API (requires `GEMINI_API_KEY` in `.env`) |
 | `python -m src.main --help` | Prints usage info and lists available profile and mode names |
+| `python -m scripts.evaluate` | Runs the full evaluation matrix (40 configs + 12 edge cases) against the golden baseline |
+| `python -m scripts.evaluate --update-golden` | Regenerates the golden baseline (run after intentional weight or catalog changes) |
+| `python -m scripts.evaluate --verbose` | Shows per-row detail for every matrix run and edge case |
 
-`--diversity` is independent of `--profile`, `--all`, and `--mode` — any combination works.
+All flags are independent — any combination works.
 
 **Available profiles:**
 
@@ -243,13 +321,71 @@ python -m src.main --help
 
 ### Running Tests
 
-Run the starter tests with:
+Run all tests:
 
 ```bash
 pytest
 ```
 
-You can add more tests in `tests/test_recommender.py`.
+The suite covers the deterministic recommender (`tests/test_recommender.py`), the input/output validators (`tests/test_validators.py`), confidence scoring (`tests/test_confidence.py`), the self-critique loop (`tests/test_critique.py`), and the RAG retriever and enricher response parsing (`tests/test_rag.py`). The RAG enrichment path itself is tested offline by mocking out the API call.
+
+### Reliability Testing
+
+Run the evaluation harness against the golden baseline:
+
+```bash
+python -m scripts.evaluate
+```
+
+Sample summary block (recorded at v2.0 release; output is reproducible from the committed catalog and weights):
+
+```
+Resonance Selector 2.0 -- Evaluation Harness
+============================================
+Catalog: data/songs.csv (20 songs, hash d05dd3e4f0e21a17)
+Weights: hash d308232a0ea82c32
+Golden:  tests/golden/expected_outputs.json (matches: YES)
+
+Matrix runs:        40/40 passed
+Edge cases:         12/12 passed
+Confidence avg:     0.44
+Fallback triggers:  12/40 runs
+  - conflicting_moods:balanced:nodiv (0.27 -> 0.27, final mode='balanced')
+  - conflicting_moods:mood-first:nodiv (0.25 -> 0.27, final mode='balanced')
+  - conflicting_moods:energy-focused:nodiv (0.22 -> 0.27, final mode='balanced')
+  - focused_jazz:mood-first:nodiv (0.36 -> 0.42, final mode='balanced')
+  - focused_jazz:energy-focused:nodiv (0.37 -> 0.42, final mode='balanced')
+  - ... (12 total)
+
+PASS
+```
+
+The matrix exercises every (profile × mode × diversity) combination. The 12 edge cases include `empty_catalog`, `unknown_genre`, `out_of_range_energy`, `missing_required_field`, `wrong_type_field`, `duplicate_in_catalog`, `nan_score_filtered`, `single_song_genre_jazz`, `tie_at_boundary`, `homogeneous_top5`, `relax_after_double_mismatch`, and `diversity_breaks_clusters`. Each edge case asserts a specific guardrail behavior — e.g., the harness must raise `HarnessError` on a duplicate catalog id, must clamp out-of-range energy with a warning, and must drop NaN-score rows from the catalog while still producing a 5-result list.
+
+The harness triggers fallback on **30%** of matrix runs — every `conflicting_moods` configuration (the adversarial profile by design) and the `focused_jazz` configurations under modes that under-weight the genre bonus, since jazz has only one song in the catalog. In **6 of those 12 fallback cases**, switching modes inside the ladder actually *improved* confidence (e.g., `focused_jazz:mood-first` 0.36 → 0.42 by falling back to `balanced`).
+
+### Sample Interactions
+
+**1. Happy path — high confidence, no fallback fires.**
+
+```bash
+python -m src.main --profile high_energy_pop
+```
+Initial confidence ≈ 0.46 (above the 0.40 threshold). The harness validates the input, runs `recommend_songs`, scores confidence, and returns the top-5 directly. Top result: *Sunrise City* (12.70 pts, perfect pop+happy genre and mood match).
+
+**2. Adversarial path — fallback ladder fires.**
+
+```bash
+python -m src.main --profile conflicting_moods --explain-harness
+```
+The profile asks for ambient + sad + high energy — internally contradictory. Initial confidence: 0.27. The harness climbs the ladder: rung 1 (mood-first), rung 2 (diversity), rung 3 (drop the `mood` preference since "sad" matches no song in the catalog). All four runs are recorded in the printed `HarnessReport`; the system then returns its best-confidence run. The user sees a yellow notice above the table explaining the adjustment.
+
+**3. RAG-enriched recommendation.**
+
+```bash
+python -m src.main --profile chill_lofi --rag
+```
+Each top-5 song's explanation is augmented with a grounded natural-language paragraph generated by Gemini, drawing on retrieved content from `docs/genres/lofi.md`, `docs/moods/chill.md`, and `docs/detailed_moods/peaceful.md`. The deterministic scoring reasons remain visible above the RAG note so the user always sees both the math and the prose.
 
 ---
 ## Output for various different user profiles:

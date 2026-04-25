@@ -1,0 +1,687 @@
+{
+  "schema_version": "1.0",
+  "catalog_hash": "d05dd3e4f0e21a17",
+  "weights_hash": "d308232a0ea82c32",
+  "profiles": {
+    "high_energy_pop:balanced:nodiv": {
+      "top_5_song_ids": [
+        1,
+        5,
+        10,
+        12,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        12.7,
+        11.96,
+        9.75,
+        9.12,
+        8.42
+      ],
+      "confidence_score_rounded_2": 0.46
+    },
+    "high_energy_pop:balanced:div": {
+      "top_5_song_ids": [
+        1,
+        5,
+        10,
+        12,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        12.7,
+        10.46,
+        9.75,
+        9.12,
+        8.42
+      ],
+      "confidence_score_rounded_2": 0.48
+    },
+    "high_energy_pop:genre-first:nodiv": {
+      "top_5_song_ids": [
+        1,
+        5,
+        10,
+        12,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        10.2,
+        9.83,
+        4.97,
+        4.65,
+        4.28
+      ],
+      "confidence_score_rounded_2": 0.51
+    },
+    "high_energy_pop:genre-first:div": {
+      "top_5_song_ids": [
+        1,
+        5,
+        10,
+        12,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        10.2,
+        8.33,
+        4.97,
+        4.65,
+        4.28
+      ],
+      "confidence_score_rounded_2": 0.53
+    },
+    "high_energy_pop:mood-first:nodiv": {
+      "top_5_song_ids": [
+        1,
+        14,
+        5,
+        10,
+        12
+      ],
+      "top_5_scores_rounded_2": [
+        9.58,
+        8.79,
+        8.43,
+        8.1,
+        6.92
+      ],
+      "confidence_score_rounded_2": 0.47
+    },
+    "high_energy_pop:mood-first:div": {
+      "top_5_song_ids": [
+        1,
+        14,
+        10,
+        5,
+        12
+      ],
+      "top_5_scores_rounded_2": [
+        9.58,
+        8.79,
+        8.1,
+        6.93,
+        6.92
+      ],
+      "confidence_score_rounded_2": 0.49
+    },
+    "high_energy_pop:energy-focused:nodiv": {
+      "top_5_song_ids": [
+        1,
+        5,
+        10,
+        12,
+        14
+      ],
+      "top_5_scores_rounded_2": [
+        11.22,
+        10.38,
+        9.65,
+        9.03,
+        8.54
+      ],
+      "confidence_score_rounded_2": 0.48
+    },
+    "high_energy_pop:energy-focused:div": {
+      "top_5_song_ids": [
+        1,
+        10,
+        12,
+        5,
+        14
+      ],
+      "top_5_scores_rounded_2": [
+        11.22,
+        9.65,
+        9.03,
+        8.88,
+        8.54
+      ],
+      "confidence_score_rounded_2": 0.5
+    },
+    "chill_lofi:balanced:nodiv": {
+      "top_5_song_ids": [
+        2,
+        4,
+        9,
+        6,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        13.04,
+        12.34,
+        11.69,
+        9.58,
+        7.79
+      ],
+      "confidence_score_rounded_2": 0.48
+    },
+    "chill_lofi:balanced:div": {
+      "top_5_song_ids": [
+        2,
+        4,
+        6,
+        9,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        13.04,
+        10.84,
+        9.58,
+        8.19,
+        7.79
+      ],
+      "confidence_score_rounded_2": 0.52
+    },
+    "chill_lofi:genre-first:nodiv": {
+      "top_5_song_ids": [
+        2,
+        4,
+        9,
+        6,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        10.37,
+        10.02,
+        9.69,
+        4.88,
+        3.97
+      ],
+      "confidence_score_rounded_2": 0.5
+    },
+    "chill_lofi:genre-first:div": {
+      "top_5_song_ids": [
+        2,
+        4,
+        9,
+        6,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        10.37,
+        8.52,
+        6.19,
+        4.88,
+        3.97
+      ],
+      "confidence_score_rounded_2": 0.54
+    },
+    "chill_lofi:mood-first:nodiv": {
+      "top_5_song_ids": [
+        2,
+        4,
+        9,
+        6,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        11.14,
+        9.27,
+        8.2,
+        7.87,
+        4.83
+      ],
+      "confidence_score_rounded_2": 0.51
+    },
+    "chill_lofi:mood-first:div": {
+      "top_5_song_ids": [
+        2,
+        6,
+        4,
+        15,
+        9
+      ],
+      "top_5_scores_rounded_2": [
+        11.14,
+        7.87,
+        7.77,
+        4.83,
+        4.7
+      ],
+      "confidence_score_rounded_2": 0.55
+    },
+    "chill_lofi:energy-focused:nodiv": {
+      "top_5_song_ids": [
+        2,
+        4,
+        9,
+        6,
+        15
+      ],
+      "top_5_scores_rounded_2": [
+        10.88,
+        10.77,
+        10.27,
+        9.51,
+        8.38
+      ],
+      "confidence_score_rounded_2": 0.42
+    },
+    "chill_lofi:energy-focused:div": {
+      "top_5_song_ids": [
+        2,
+        6,
+        4,
+        15,
+        13
+      ],
+      "top_5_scores_rounded_2": [
+        10.88,
+        9.51,
+        9.27,
+        8.38,
+        7.98
+      ],
+      "confidence_score_rounded_2": 0.43
+    },
+    "deep_intense_rock:balanced:nodiv": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        13.52,
+        9.58,
+        9.5,
+        9.04,
+        7.71
+      ],
+      "confidence_score_rounded_2": 0.48
+    },
+    "deep_intense_rock:balanced:div": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        13.52,
+        9.58,
+        9.5,
+        9.04,
+        7.71
+      ],
+      "confidence_score_rounded_2": 0.48
+    },
+    "deep_intense_rock:genre-first:nodiv": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        10.61,
+        4.89,
+        4.84,
+        4.6,
+        3.94
+      ],
+      "confidence_score_rounded_2": 0.54
+    },
+    "deep_intense_rock:genre-first:div": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        10.61,
+        4.89,
+        4.84,
+        4.6,
+        3.94
+      ],
+      "confidence_score_rounded_2": 0.54
+    },
+    "deep_intense_rock:mood-first:nodiv": {
+      "top_5_song_ids": [
+        3,
+        5,
+        11,
+        19,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        11.38,
+        7.38,
+        7.21,
+        7.2,
+        4.7
+      ],
+      "confidence_score_rounded_2": 0.49
+    },
+    "deep_intense_rock:mood-first:div": {
+      "top_5_song_ids": [
+        3,
+        5,
+        11,
+        19,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        11.38,
+        7.38,
+        7.21,
+        7.2,
+        4.7
+      ],
+      "confidence_score_rounded_2": 0.49
+    },
+    "deep_intense_rock:energy-focused:nodiv": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        11.49,
+        9.45,
+        9.43,
+        8.92,
+        7.76
+      ],
+      "confidence_score_rounded_2": 0.41
+    },
+    "deep_intense_rock:energy-focused:div": {
+      "top_5_song_ids": [
+        3,
+        19,
+        11,
+        5,
+        17
+      ],
+      "top_5_scores_rounded_2": [
+        11.49,
+        9.45,
+        9.43,
+        8.92,
+        7.76
+      ],
+      "confidence_score_rounded_2": 0.41
+    },
+    "conflicting_moods:balanced:nodiv": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "conflicting_moods:balanced:div": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "conflicting_moods:genre-first:nodiv": {
+      "top_5_song_ids": [
+        6,
+        16,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.51,
+        3.89,
+        3.75,
+        3.75,
+        3.65
+      ],
+      "confidence_score_rounded_2": 0.39
+    },
+    "conflicting_moods:genre-first:div": {
+      "top_5_song_ids": [
+        6,
+        16,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.51,
+        3.89,
+        3.75,
+        3.75,
+        3.65
+      ],
+      "confidence_score_rounded_2": 0.39
+    },
+    "conflicting_moods:mood-first:nodiv": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "conflicting_moods:mood-first:div": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "conflicting_moods:energy-focused:nodiv": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "conflicting_moods:energy-focused:div": {
+      "top_5_song_ids": [
+        16,
+        6,
+        3,
+        19,
+        11
+      ],
+      "top_5_scores_rounded_2": [
+        7.59,
+        7.42,
+        7.32,
+        7.31,
+        7.14
+      ],
+      "confidence_score_rounded_2": 0.27
+    },
+    "focused_jazz:balanced:nodiv": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        4
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.88
+      ],
+      "confidence_score_rounded_2": 0.42
+    },
+    "focused_jazz:balanced:div": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.61
+      ],
+      "confidence_score_rounded_2": 0.45
+    },
+    "focused_jazz:genre-first:nodiv": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        4
+      ],
+      "top_5_scores_rounded_2": [
+        9.74,
+        4.58,
+        4.31,
+        4.09,
+        4.0
+      ],
+      "confidence_score_rounded_2": 0.5
+    },
+    "focused_jazz:genre-first:div": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        9.74,
+        4.58,
+        4.31,
+        4.09,
+        3.89
+      ],
+      "confidence_score_rounded_2": 0.52
+    },
+    "focused_jazz:mood-first:nodiv": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        4
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.88
+      ],
+      "confidence_score_rounded_2": 0.42
+    },
+    "focused_jazz:mood-first:div": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.61
+      ],
+      "confidence_score_rounded_2": 0.45
+    },
+    "focused_jazz:energy-focused:nodiv": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        4
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.88
+      ],
+      "confidence_score_rounded_2": 0.42
+    },
+    "focused_jazz:energy-focused:div": {
+      "top_5_song_ids": [
+        7,
+        13,
+        9,
+        18,
+        8
+      ],
+      "top_5_scores_rounded_2": [
+        11.78,
+        8.97,
+        8.5,
+        7.99,
+        7.61
+      ],
+      "confidence_score_rounded_2": 0.45
+    }
+  }
+}

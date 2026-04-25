@@ -1,5 +1,5 @@
 """
-Command line runner for the Music Recommender Simulation.
+Command line runner for Resonance Selector 2.0.
 
 Run from the project root with:
     python -m src.main                                                  # default: High-Energy Pop, balanced
@@ -10,6 +10,9 @@ Run from the project root with:
     python -m src.main --all --mode energy-focused                      # all profiles, energy-focused mode
     python -m src.main --diversity                                      # enable diversity penalty
     python -m src.main --all --diversity --mode genre-first             # all profiles with diversity
+    python -m src.main --explain-harness                                # print self-critique report under each table
+    python -m src.main --no-harness                                     # legacy path: bypass guardrails + fallback
+    python -m src.main --rag --profile chill_lofi                       # RAG-enriched explanations (requires ANTHROPIC_API_KEY)
     python -m src.main --help                                           # list available profiles and modes
 """
 
@@ -25,6 +28,8 @@ except ImportError:
     _HAS_RICH = False
 
 from src.recommender import load_songs, recommend_songs, SCORING_MODES
+from src.harness import recommend_with_harness, HarnessReport, HarnessError
+from src.harness.logging_utils import write_run_log
 
 
 PROFILES = {
@@ -106,9 +111,28 @@ PROFILES = {
 }
 
 
-def display_table(recommendations: list) -> None:
-    """Render recommendations as a color-coded table with per-song scoring reasons."""
+def display_table(recommendations: list, report: HarnessReport = None) -> None:
+    """Render recommendations as a color-coded table with per-song scoring reasons.
+
+    If a HarnessReport is provided and a fallback was triggered, a yellow note is
+    printed above the table summarizing how the system adjusted its strategy.
+    """
     if _HAS_RICH:
+        if report is not None and report.fallback_triggered:
+            note_lines = [
+                f"[bold yellow]Self-critique fallback triggered.[/bold yellow]",
+                f"  Initial confidence: {report.confidence_initial:.2f} (threshold {report.confidence_threshold:.2f})",
+                f"  Final confidence:   {report.confidence_final:.2f}",
+                f"  Final strategy:     mode='{report.final_mode}', diversity={report.final_diversity}",
+            ]
+            if report.relaxed_preferences:
+                note_lines.append(
+                    f"  Relaxed:            {', '.join(report.relaxed_preferences)}"
+                )
+            for line in note_lines:
+                _RICH_CONSOLE.print(line)
+            _RICH_CONSOLE.print()
+
         table = _Table(box=_box.ROUNDED, show_lines=True, highlight=True)
         table.add_column("#",             style="bold cyan",  justify="center", width=3)
         table.add_column("Title",         style="bold white")
@@ -150,6 +174,13 @@ def display_table(recommendations: list) -> None:
         _RICH_CONSOLE.print(table)
 
     else:
+        if report is not None and report.fallback_triggered:
+            print(f"[Self-critique fallback triggered] "
+                  f"conf {report.confidence_initial:.2f} -> {report.confidence_final:.2f}, "
+                  f"final mode='{report.final_mode}', diversity={report.final_diversity}")
+            if report.relaxed_preferences:
+                print(f"  Relaxed: {', '.join(report.relaxed_preferences)}")
+
         for rank, (song, score, explanation) in enumerate(recommendations, start=1):
             print(f"{rank}. {song['title']} by {song['artist']}  [Score: {score:.2f}]")
             reasons = "\n   ".join(explanation.split(" | "))
@@ -157,23 +188,84 @@ def display_table(recommendations: list) -> None:
             print()
 
 
-def run_profile(user_prefs: dict, songs: list, mode: str = "balanced", diversity: bool = False) -> None:
+def print_harness_report(report: HarnessReport) -> None:
+    """Print the full HarnessReport detail (for --explain-harness)."""
+    if _HAS_RICH:
+        _RICH_CONSOLE.print()
+        _RICH_CONSOLE.print(f"[bold]Harness report — {report.profile_label}[/bold]")
+        _RICH_CONSOLE.print(f"  initial:  mode='{report.initial_mode}', diversity={report.initial_diversity}, conf={report.confidence_initial:.3f}")
+        _RICH_CONSOLE.print(f"  final:    mode='{report.final_mode}', diversity={report.final_diversity}, conf={report.confidence_final:.3f}")
+        _RICH_CONSOLE.print(f"  threshold: {report.confidence_threshold:.2f}")
+        _RICH_CONSOLE.print(f"  fallback triggered: {report.fallback_triggered}")
+        if report.relaxed_preferences:
+            _RICH_CONSOLE.print(f"  relaxed preferences: {', '.join(report.relaxed_preferences)}")
+        _RICH_CONSOLE.print("  rungs attempted:")
+        for r in report.rungs_attempted:
+            _RICH_CONSOLE.print(f"    - {r}")
+        if report.flags:
+            _RICH_CONSOLE.print("  flags:")
+            for f in report.flags:
+                _RICH_CONSOLE.print(f"    - [yellow]{f}[/yellow]")
+        if report.warnings:
+            _RICH_CONSOLE.print("  warnings:")
+            for w in report.warnings:
+                _RICH_CONSOLE.print(f"    - [dim]{w}[/dim]")
+    else:
+        print(f"\nHarness report — {report.profile_label}")
+        print(f"  initial: mode='{report.initial_mode}', conf={report.confidence_initial:.3f}")
+        print(f"  final:   mode='{report.final_mode}', conf={report.confidence_final:.3f}")
+        print(f"  fallback triggered: {report.fallback_triggered}")
+        for r in report.rungs_attempted:
+            print(f"    - {r}")
+
+
+def run_profile(
+    user_prefs: dict,
+    songs: list,
+    mode: str = "balanced",
+    diversity: bool = False,
+    use_harness: bool = True,
+    explain_harness: bool = False,
+    use_rag: bool = False,
+) -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
     diversity_label = "  [diversity ON]" if diversity else ""
+    harness_label = "" if use_harness else "  [HARNESS BYPASSED]"
     print(f"\n{'=' * 50}")
-    print(f"  Profile: {label}  |  Mode: {mode}{diversity_label}")
+    print(f"  Profile: {label}  |  Mode: {mode}{diversity_label}{harness_label}")
     print(f"{'=' * 50}")
 
-    recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode, diversity=diversity)
+    report = None
+    if use_harness:
+        try:
+            recommendations, report = recommend_with_harness(
+                user_prefs, songs, k=5, mode=mode, diversity=diversity
+            )
+        except HarnessError as exc:
+            print(f"[ERROR] harness rejected this run: {exc}")
+            return
+        write_run_log(report, recommendations)
+    else:
+        recommendations = recommend_songs(user_prefs, songs, k=5, mode=mode, diversity=diversity)
+
+    if use_rag and recommendations:
+        try:
+            from src.rag.enricher import enrich_recommendations
+            recommendations = enrich_recommendations(user_prefs, recommendations)
+        except Exception as exc:
+            print(f"[RAG] enrichment failed ({exc}); falling back to deterministic explanations.")
 
     print("\nTop recommendations:\n")
-    display_table(recommendations)
+    display_table(recommendations, report=report)
+
+    if explain_harness and report is not None:
+        print_harness_report(report)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Music Recommender Simulation",
+        description="Resonance Selector 2.0 — music recommender with self-critique harness",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Available profiles:\n  " + "\n  ".join(PROFILES.keys()) +
@@ -204,10 +296,24 @@ def main() -> None:
         action="store_true",
         help="Apply diversity penalty: reduce scores for songs whose artist or genre is already in the top results.",
     )
+    parser.add_argument(
+        "--no-harness",
+        action="store_true",
+        help="Bypass the reliability harness and self-critique loop. Useful for direct A/B comparison demos.",
+    )
+    parser.add_argument(
+        "--explain-harness",
+        action="store_true",
+        help="Print the full HarnessReport (rung trace, flags, warnings) under each profile's table.",
+    )
+    parser.add_argument(
+        "--rag",
+        action="store_true",
+        help="Enrich explanations with RAG-grounded natural language paragraphs (requires ANTHROPIC_API_KEY in .env).",
+    )
     args = parser.parse_args()
 
     songs = load_songs("data/songs.csv")
-    print(f"Loaded {len(songs)} songs.")
 
     if args.all:
         profiles_to_run = list(PROFILES.values())
@@ -217,7 +323,15 @@ def main() -> None:
         profiles_to_run = [PROFILES["high_energy_pop"]]
 
     for user_prefs in profiles_to_run:
-        run_profile(user_prefs, songs, mode=args.mode, diversity=args.diversity)
+        run_profile(
+            user_prefs,
+            songs,
+            mode=args.mode,
+            diversity=args.diversity,
+            use_harness=not args.no_harness,
+            explain_harness=args.explain_harness,
+            use_rag=args.rag,
+        )
 
 
 if __name__ == "__main__":
