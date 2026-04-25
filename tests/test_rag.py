@@ -6,7 +6,14 @@ from unittest.mock import patch
 import pytest
 
 from src.rag.retriever import Retriever, _slug
-from src.rag.enricher import enrich_recommendations, _parse_response, _build_user_payload
+from src.rag.enricher import (
+    enrich_recommendations,
+    _parse_response,
+    _build_user_payload,
+    _build_system_prompt,
+    list_personas,
+    PERSONAS,
+)
 
 
 def test_retriever_loads_docs():
@@ -46,9 +53,11 @@ def test_slug_normalizes_special_chars():
 
 def test_enricher_returns_unchanged_when_no_api_key(small_songs_dicts, basic_user_prefs):
     results = [(s, 5.0, "deterministic reason") for s in small_songs_dicts]
-    with patch.dict(os.environ, {}, clear=True):
+    # Override only the key var, not the whole environment, so other modules can
+    # still resolve $HOME/$USERPROFILE during import. load_dotenv won't override
+    # an already-set env var by default, so this stays empty even if .env has a key.
+    with patch.dict(os.environ, {"GEMINI_API_KEY": ""}):
         out = enrich_recommendations(basic_user_prefs, results)
-    # without key, results pass through unchanged
     assert out == results
 
 
@@ -78,3 +87,36 @@ def test_enricher_payload_includes_user_prefs_and_documents(small_songs_dicts, b
     assert "USER PREFERENCES" in payload
     assert "Test Pop Track" in payload
     assert "JSON" in payload  # schema instruction
+
+
+def test_all_personas_registered():
+    expected = {"default", "analytical", "enthusiast", "historian"}
+    assert set(list_personas()) >= expected
+    for name in expected:
+        assert PERSONAS[name]["instruction"], f"persona {name} missing instruction"
+
+
+def test_persona_prompts_diverge():
+    """Each persona must produce a meaningfully different system prompt so
+    output style can measurably differ from baseline."""
+    prompts = {p: _build_system_prompt(p) for p in list_personas()}
+    pairs = [
+        ("default", "analytical"),
+        ("default", "enthusiast"),
+        ("default", "historian"),
+        ("analytical", "enthusiast"),
+    ]
+    for a, b in pairs:
+        assert prompts[a] != prompts[b], f"{a} and {b} prompts are identical"
+    # analytical should mention musical-theory vocabulary
+    assert any(term in prompts["analytical"].lower() for term in ("harmonic", "instrumentation", "modal"))
+    # enthusiast should mention casual vibe
+    assert any(term in prompts["enthusiast"].lower() for term in ("casual", "vibe", "fan", "exclamation"))
+    # historian should mention lineage/era
+    assert any(term in prompts["historian"].lower() for term in ("lineage", "era", "tradition", "historian"))
+
+
+def test_unknown_persona_falls_back_to_default():
+    fallback_prompt = _build_system_prompt("totally-made-up")
+    default_prompt = _build_system_prompt("default")
+    assert fallback_prompt == default_prompt

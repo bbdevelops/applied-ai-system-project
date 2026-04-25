@@ -28,16 +28,101 @@ from src.rag.retriever import Retriever, Document
 GEMINI_MODEL = "gemini-2.5-flash"
 SEPARATOR = "\n\nRAG note: "
 
-SYSTEM_PROMPT = (
-    "You are a music critic helping someone understand why a recommender "
-    "selected specific songs. For each song, you will receive: the user's "
-    "preferences, the song's metadata, the deterministic scoring reasons, "
-    "and 1-3 retrieved reference documents about its genre and mood. "
-    "Write a single short paragraph (2-3 sentences, max ~50 words) per song "
-    "that grounds the recommendation in the retrieved documents. Reference "
-    "specific phrases or concepts from the documents. Do not invent facts "
-    "outside the documents and the song metadata. Do not use markdown formatting."
+# Base instruction shared by every persona. Persona-specific text is appended
+# below to constrain tone, vocabulary, and focus area while keeping the JSON
+# contract unchanged.
+_BASE_INSTRUCTION = (
+    "You are explaining to a listener why a recommender selected specific songs. "
+    "For each song you will receive: the user's preferences, the song's metadata, "
+    "the deterministic scoring reasons, and 1-3 retrieved reference documents "
+    "about its genre and mood. Ground each explanation in those documents — "
+    "reference specific phrases or concepts from them. Do not invent facts "
+    "outside the documents and the song metadata. Do not use markdown formatting. "
+    "Output JSON only, with one entry per song, in the order they were given."
 )
+
+PERSONAS: Dict[str, Dict[str, str]] = {
+    "default": {
+        "label": "Default music critic",
+        "instruction": (
+            "Write 2-3 sentences (max ~50 words) per song in a clear, neutral "
+            "music-critic voice. Aim for informative concision."
+        ),
+        "fewshot": "",
+    },
+    "analytical": {
+        "label": "Analytical musician",
+        "instruction": (
+            "Write 2-3 sentences (max ~60 words) per song from the perspective "
+            "of an analytical musician. Focus on instrumentation, harmonic "
+            "language (mode, tonality, key tendencies), production texture, "
+            "and structural elements. Use specific musical terminology drawn "
+            "from the retrieved documents (e.g., 'minor harmony', 'syncopation', "
+            "'gated reverb', 'sidechained bassline'). Avoid emotional language "
+            "and avoid hyping the song."
+        ),
+        "fewshot": (
+            "Example output style:\n"
+            "  \"The track's modal-major harmony and gated-reverb drum signature "
+            "place it firmly in the synthwave lineage; sidechained bass and "
+            "arpeggiated leads reinforce the retrofuturist palette the genre "
+            "document describes. Tempo and danceability cluster within the "
+            "90-120 BPM band typical of the form.\""
+        ),
+    },
+    "enthusiast": {
+        "label": "Energetic enthusiast",
+        "instruction": (
+            "Write 2-3 sentences (max ~50 words) per song with an upbeat, "
+            "casual fan voice. Use exclamation, conversational vocabulary, "
+            "and focus on vibe, feel, and listening context (when to play it, "
+            "what mood it lands in). Still ground claims in the retrieved "
+            "documents but reframe them as recommendations a friend would "
+            "make. Avoid clinical or academic vocabulary."
+        ),
+        "fewshot": (
+            "Example output style:\n"
+            "  \"This one's a perfect chill-mode pick — the lofi doc nails it "
+            "with 'as ignorable as it is interesting,' and that's exactly the "
+            "energy here. Throw it on for studying or a slow Sunday and let "
+            "it just sit in the background while you do your thing.\""
+        ),
+    },
+    "historian": {
+        "label": "Genre historian",
+        "instruction": (
+            "Write 2-3 sentences (max ~60 words) per song from the perspective "
+            "of a genre historian. Anchor each explanation to lineage, era, "
+            "and stylistic influences as described in the retrieved documents. "
+            "Mention the genre's origin period, key precedents, and how this "
+            "track sits within the tradition. Use historical framing ('rooted "
+            "in', 'descended from', 'echoes of') rather than emotional or "
+            "instrumental analysis."
+        ),
+        "fewshot": (
+            "Example output style:\n"
+            "  \"The track sits in a tradition the genre document traces to "
+            "Brian Eno's 1970s work — the 'as ignorable as it is interesting' "
+            "ethos shows in the slow harmonic motion and absence of beat. It "
+            "carries the lineage of ambient electronic into a contemporary "
+            "production context.\""
+        ),
+    },
+}
+
+DEFAULT_PERSONA = "default"
+
+
+def _build_system_prompt(persona: str) -> str:
+    config = PERSONAS.get(persona, PERSONAS[DEFAULT_PERSONA])
+    parts = [_BASE_INSTRUCTION, "", config["instruction"]]
+    if config["fewshot"]:
+        parts.extend(["", config["fewshot"]])
+    return "\n".join(parts)
+
+
+def list_personas() -> List[str]:
+    return list(PERSONAS.keys())
 
 
 def _format_doc(doc: Document) -> str:
@@ -71,7 +156,8 @@ def _build_user_payload(
     lines.append(
         "Output JSON only, with no surrounding prose. Schema: "
         '{"notes": [{"id": <song_id>, "note": "<paragraph>"}, ...]} '
-        f"with one entry per song in the same order, exactly {len(items)} entries."
+        f"with one entry per song in the same order, exactly {len(items)} entries. "
+        "Each note must follow the persona's instructed style."
     )
     return "\n".join(lines)
 
@@ -123,6 +209,7 @@ def enrich_recommendations(
     results: List[Tuple[Dict[str, Any], float, str]],
     retriever: Optional[Retriever] = None,
     model_name: str = GEMINI_MODEL,
+    persona: str = DEFAULT_PERSONA,
 ) -> List[Tuple[Dict[str, Any], float, str]]:
     """
     Enrich each result's explanation with a RAG-grounded paragraph.
@@ -142,9 +229,10 @@ def enrich_recommendations(
         return results
 
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types as genai_types
     except ImportError:
-        print("[RAG] google-generativeai not installed; run `pip install -r requirements.txt`.")
+        print("[RAG] google-genai not installed; run `pip install -r requirements.txt`.")
         return results
 
     if retriever is None:
@@ -158,18 +246,21 @@ def enrich_recommendations(
     expected_ids = [song["id"] for song, _, _, _ in items]
     user_payload = _build_user_payload(user_prefs, items)
 
+    if persona not in PERSONAS:
+        print(f"[RAG] unknown persona '{persona}'; falling back to '{DEFAULT_PERSONA}'.")
+        persona = DEFAULT_PERSONA
+    system_prompt = _build_system_prompt(persona)
+
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=SYSTEM_PROMPT,
-        )
-        response = model.generate_content(
-            user_payload,
-            generation_config={
-                "temperature": 0.4,
-                "response_mime_type": "application/json",
-            },
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=user_payload,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.4,
+                response_mime_type="application/json",
+            ),
         )
         text = response.text or ""
     except Exception as exc:

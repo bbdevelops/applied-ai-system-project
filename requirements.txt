@@ -3,5 +3,5 @@ pytest
 streamlit
 rich
 scikit-learn
-google-generativeai
+google-genai
 python-dotenv

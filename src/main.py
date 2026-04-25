@@ -30,6 +30,7 @@ except ImportError:
 from src.recommender import load_songs, recommend_songs, SCORING_MODES
 from src.harness import recommend_with_harness, HarnessReport, HarnessError
 from src.harness.logging_utils import write_run_log
+from src.rag.enricher import list_personas as _list_personas
 
 
 PROFILES = {
@@ -227,6 +228,7 @@ def run_profile(
     use_harness: bool = True,
     explain_harness: bool = False,
     use_rag: bool = False,
+    persona: str = "default",
 ) -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
@@ -252,7 +254,9 @@ def run_profile(
     if use_rag and recommendations:
         try:
             from src.rag.enricher import enrich_recommendations
-            recommendations = enrich_recommendations(user_prefs, recommendations)
+            recommendations = enrich_recommendations(
+                user_prefs, recommendations, persona=persona
+            )
         except Exception as exc:
             print(f"[RAG] enrichment failed ({exc}); falling back to deterministic explanations.")
 
@@ -309,7 +313,18 @@ def main() -> None:
     parser.add_argument(
         "--rag",
         action="store_true",
-        help="Enrich explanations with RAG-grounded natural language paragraphs (requires ANTHROPIC_API_KEY in .env).",
+        help="Enrich explanations with RAG-grounded natural language paragraphs (requires GEMINI_API_KEY in .env).",
+    )
+    parser.add_argument(
+        "--persona",
+        choices=_list_personas(),
+        default="default",
+        metavar="PERSONA",
+        help=(
+            f"RAG voice persona. Choices: {', '.join(_list_personas())} "
+            "(default: default). Each persona constrains tone, vocabulary, "
+            "and focus area. Only takes effect with --rag."
+        ),
     )
     args = parser.parse_args()
 
@@ -331,6 +346,7 @@ def main() -> None:
             use_harness=not args.no_harness,
             explain_harness=args.explain_harness,
             use_rag=args.rag,
+            persona=args.persona,
         )
 
 
