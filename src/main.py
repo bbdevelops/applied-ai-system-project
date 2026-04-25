@@ -12,7 +12,8 @@ Run from the project root with:
     python -m src.main --all --diversity --mode genre-first             # all profiles with diversity
     python -m src.main --explain-harness                                # print self-critique report under each table
     python -m src.main --no-harness                                     # legacy path: bypass guardrails + fallback
-    python -m src.main --rag --profile chill_lofi                       # RAG-enriched explanations (requires ANTHROPIC_API_KEY)
+    python -m src.main --rag --profile chill_lofi                       # RAG-enriched explanations (requires GEMINI_API_KEY)
+    python -m src.main --agent --profile conflicting_moods              # LLM planning agent on a low-confidence profile
     python -m src.main --help                                           # list available profiles and modes
 """
 
@@ -27,10 +28,23 @@ try:
 except ImportError:
     _HAS_RICH = False
 
+
+def _say(text: str = "", *, style: str = "") -> None:
+    """Print a line through rich (with optional style) when available, else plain.
+
+    `markup=False` keeps literal brackets in messages like '[ERROR]' from being
+    parsed as rich markup tags. Styling is applied via the `style` kwarg instead.
+    """
+    if _HAS_RICH:
+        _RICH_CONSOLE.print(text, style=style or None, markup=False)
+    else:
+        print(text)
+
 from src.recommender import load_songs, recommend_songs, SCORING_MODES
 from src.harness import recommend_with_harness, HarnessReport, HarnessError
 from src.harness.logging_utils import write_run_log
 from src.rag.enricher import list_personas as _list_personas
+from src.agent import agentic_recommend, AgentTrace
 
 
 PROFILES = {
@@ -112,7 +126,7 @@ PROFILES = {
 }
 
 
-def display_table(recommendations: list, report: HarnessReport = None) -> None:
+def display_table(recommendations: list, report: HarnessReport | None = None) -> None:
     """Render recommendations as a color-coded table with per-song scoring reasons.
 
     If a HarnessReport is provided and a fallback was triggered, a yellow note is
@@ -220,6 +234,52 @@ def print_harness_report(report: HarnessReport) -> None:
             print(f"    - {r}")
 
 
+def print_agent_trace(trace: AgentTrace) -> None:
+    """Render the AgentTrace step-by-step so the planning chain is visible."""
+    if _HAS_RICH:
+        _RICH_CONSOLE.print()
+        _RICH_CONSOLE.print(
+            f"[bold magenta]Agent planning trace -- {trace.profile_label}[/bold magenta]"
+        )
+        _RICH_CONSOLE.print(
+            f"  initial: mode='{trace.initial_mode}', diversity={trace.initial_diversity}, "
+            f"conf={trace.initial_confidence:.3f}"
+        )
+        _RICH_CONSOLE.print(
+            f"  final:   mode='{trace.final_mode}', diversity={trace.final_diversity}, "
+            f"conf={trace.final_confidence:.3f}"
+        )
+        _RICH_CONSOLE.print(f"  terminated: [bold]{trace.terminated_reason}[/bold]")
+        if trace.relaxed_preferences:
+            _RICH_CONSOLE.print(f"  relaxed: {', '.join(trace.relaxed_preferences)}")
+        _RICH_CONSOLE.print("  steps:")
+        for s in trace.steps:
+            color = "red" if s.error else "cyan"
+            _RICH_CONSOLE.print(
+                f"    [{color}]step {s.step_num}[/{color}] tool=[bold]{s.tool_name}[/bold] "
+                f"args={s.tool_args} -> conf={s.confidence_after:.3f}"
+            )
+            if s.reasoning:
+                _RICH_CONSOLE.print(f"      reasoning: [italic]{s.reasoning}[/italic]")
+            if s.observation:
+                first_line = s.observation.split("\n")[0]
+                _RICH_CONSOLE.print(f"      observation: [dim]{first_line}[/dim]")
+        if trace.warnings:
+            _RICH_CONSOLE.print("  warnings:")
+            for w in trace.warnings:
+                _RICH_CONSOLE.print(f"    - [dim]{w}[/dim]")
+    else:
+        print(f"\nAgent planning trace -- {trace.profile_label}")
+        print(f"  initial conf={trace.initial_confidence:.3f}; "
+              f"final conf={trace.final_confidence:.3f}; "
+              f"terminated={trace.terminated_reason}")
+        for s in trace.steps:
+            print(f"  step {s.step_num}: tool={s.tool_name} args={s.tool_args} "
+                  f"-> conf={s.confidence_after:.3f}")
+            if s.reasoning:
+                print(f"    reasoning: {s.reasoning}")
+
+
 def run_profile(
     user_prefs: dict,
     songs: list,
@@ -229,23 +289,41 @@ def run_profile(
     explain_harness: bool = False,
     use_rag: bool = False,
     persona: str = "default",
+    use_agent: bool = False,
 ) -> None:
     """Print top-5 recommendations for a single user profile."""
     label = user_prefs.get("label", "Unknown Profile")
     diversity_label = "  [diversity ON]" if diversity else ""
-    harness_label = "" if use_harness else "  [HARNESS BYPASSED]"
-    print(f"\n{'=' * 50}")
-    print(f"  Profile: {label}  |  Mode: {mode}{diversity_label}{harness_label}")
-    print(f"{'=' * 50}")
+    if use_agent:
+        harness_label = "  [AGENT MODE]"
+    elif not use_harness:
+        harness_label = "  [HARNESS BYPASSED]"
+    else:
+        harness_label = ""
+    _say(f"\n{'=' * 50}", style="cyan")
+    _say(f"  Profile: {label}  |  Mode: {mode}{diversity_label}{harness_label}", style="bold")
+    _say(f"{'=' * 50}", style="cyan")
 
     report = None
-    if use_harness:
+    trace: AgentTrace | None = None
+    if use_agent:
+        try:
+            recommendations, trace = agentic_recommend(
+                user_prefs, songs, k=5, mode=mode, diversity=diversity
+            )
+        except HarnessError as exc:
+            _say(f"[ERROR] agent rejected this run: {exc}", style="bold red")
+            return
+        except RuntimeError as exc:
+            _say(f"[ERROR] agent could not start: {exc}", style="bold red")
+            return
+    elif use_harness:
         try:
             recommendations, report = recommend_with_harness(
                 user_prefs, songs, k=5, mode=mode, diversity=diversity
             )
         except HarnessError as exc:
-            print(f"[ERROR] harness rejected this run: {exc}")
+            _say(f"[ERROR] harness rejected this run: {exc}", style="bold red")
             return
         write_run_log(report, recommendations)
     else:
@@ -258,13 +336,15 @@ def run_profile(
                 user_prefs, recommendations, persona=persona
             )
         except Exception as exc:
-            print(f"[RAG] enrichment failed ({exc}); falling back to deterministic explanations.")
+            _say(f"[RAG] enrichment failed ({exc}); falling back to deterministic explanations.", style="yellow")
 
-    print("\nTop recommendations:\n")
+    _say("\nTop recommendations:\n", style="bold")
     display_table(recommendations, report=report)
 
     if explain_harness and report is not None:
         print_harness_report(report)
+    if trace is not None:
+        print_agent_trace(trace)
 
 
 def main() -> None:
@@ -326,7 +406,19 @@ def main() -> None:
             "and focus area. Only takes effect with --rag."
         ),
     )
+    parser.add_argument(
+        "--agent",
+        action="store_true",
+        help=(
+            "Use the LLM planning agent instead of the deterministic fallback "
+            "ladder. The agent picks repair tools (try_mode, enable_diversity, "
+            "drop_preference, inspect_catalog, report_unfixable) one step at a "
+            "time and prints its reasoning. Requires GEMINI_API_KEY."
+        ),
+    )
     args = parser.parse_args()
+    if args.agent and args.no_harness:
+        parser.error("--agent and --no-harness are mutually exclusive")
 
     songs = load_songs("data/songs.csv")
 
@@ -347,6 +439,7 @@ def main() -> None:
             explain_harness=args.explain_harness,
             use_rag=args.rag,
             persona=args.persona,
+            use_agent=args.agent,
         )
 
 
