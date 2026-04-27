@@ -212,7 +212,7 @@ Building this taught me to value the engineering around the AI as much as the AI
 
 ## Loom Walkthrough
 
-> *TODO — paste Loom video link here. The walkthrough should demonstrate end-to-end runs (2–3 inputs), the AI feature behavior (RAG and/or agent), and the reliability/guardrail behavior (a fallback firing).*
+[> *TODO — paste Loom video link here. The walkthrough should demonstrate end-to-end runs (2–3 inputs), the AI feature behavior (RAG and/or agent), and the reliability/guardrail behavior (a fallback firing).*](https://vimeo.com/1186813757?share=copy&fl=sv&fe=ci)
 
 ## Further Reading
 
